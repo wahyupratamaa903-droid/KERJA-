@@ -13,12 +13,12 @@ const btnTutupModal = document.getElementById('btn-tutup-modal');
 let dataSarana = JSON.parse(localStorage.getItem('sarana-kerja-v3') || '[]');
 let indexSaranaTerpilih = null;
 
-// Tanggal hari ini
+// Tanggal default hari ini
 const tglHariIni = new Date().toISOString().split('T')[0];
 document.getElementById('tanggalPengecekan').value = tglHariIni;
 document.getElementById('modalTanggal').value = tglHariIni;
 
-// Logika FL (bisa dihitung) vs BL (dalam box / tidak bisa dihitung)
+// Logika FL vs BL
 selectJenisLampu.addEventListener('change', () => {
   if (selectJenisLampu.value === 'FL') {
     inputJumlahLampu.disabled = false;
@@ -65,13 +65,12 @@ function renderData() {
     const kartu = document.createElement('article');
     kartu.className = `kartu-sarana status-${info.status}`;
 
-    // Format info lampu
     let teksLampu = '';
     if (item.jenisLampu === 'FL') teksLampu = `FL (${item.jumlahLampu} Titik)`;
     else if (item.jenisLampu === 'BL') teksLampu = 'BL (Backlight)';
     else teksLampu = 'Non-Lampu';
 
-    // Rincian riwayat awal vs terakhir
+    // Rincian Riwayat
     let blokRiwayat = `
       <div class="baris-riwayat">
         <div class="item-riwayat">
@@ -92,21 +91,27 @@ function renderData() {
     }
     blokRiwayat += `</div>`;
 
-    // Analisa pemakaian
+    // Analisa & Prediksi Tanggal
     let blokAnalisa = '';
-    if (info.status === 'baru' || info.status === 'topup') {
+    if (info.pesan) {
       blokAnalisa = `<p class="pesan-catatan">${info.pesan}</p>`;
     } else {
+      const teksPemakaian = info.isTopUp 
+        ? `<span style="color:#10b981; font-weight:600;">Status: Diisi Ulang</span>`
+        : `Pemakaian: <strong>${info.totalPakai} kWh</strong> (${info.selisihHari} hr)`;
+
       blokAnalisa = `
         <div class="grid-ringkasan">
-          <div>Pemakaian: <strong>${info.totalPakai} kWh</strong> (${info.selisihHari} hr)</div>
-          <div>Rata-rata: <strong>${info.rataPerHari} kWh/hr</strong></div>
-          <div class="sorot-hari">Estimasi: <strong>± ${info.estimasiHari} Hari Lagi</strong></div>
+          <div>${teksPemakaian}</div>
+          <div>Rata-rata: <strong>${info.rataPerHari} kWh/hr</strong> ${info.isTopUp ? '(riwayat lalu)' : ''}</div>
+          <div class="sorot-hari">
+            Estimasi: <strong>± ${info.estimasiHari} Hari Lagi (${info.tanggalHabis})</strong>
+          </div>
         </div>
       `;
     }
 
-    // Tampilan banyak foto
+    // Galeri Foto
     let galeriHtml = '';
     if (item.fotos && item.fotos.length > 0) {
       galeriHtml = `
@@ -123,7 +128,7 @@ function renderData() {
           <h3 class="lokasi-sarana">${item.lokasi}</h3>
         </div>
         <span class="tag-status ${info.status}">
-          ${info.status === 'kritis' ? 'PERLU DIISI' : info.status === 'waspada' ? 'WASPADA' : info.status === 'aman' ? 'AMAN' : 'AKTIF'}
+          ${info.isTopUp ? 'DIISI ULANG' : info.status === 'kritis' ? 'PERLU DIISI' : info.status === 'waspada' ? 'WASPADA' : info.status === 'aman' ? 'AMAN' : 'AKTIF'}
         </span>
       </div>
 
@@ -142,11 +147,21 @@ function renderData() {
     containerDaftar.appendChild(kartu);
   });
 
-  // Event listener tombol
+  // Modal Update dengan info patokan sebelumnya
   document.querySelectorAll('.btn-update').forEach(btn => {
     btn.addEventListener('click', (e) => {
       indexSaranaTerpilih = Number(e.target.getAttribute('data-index'));
-      document.getElementById('nama-sarana-modal').textContent = dataSarana[indexSaranaTerpilih].lokasi;
+      const sarana = dataSarana[indexSaranaTerpilih];
+      const riwayatUrut = [...sarana.riwayatToken].sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+      const terakhir = riwayatUrut[riwayatUrut.length - 1];
+
+      // Tampilkan patokan token terakhir di dalam popup
+      document.getElementById('nama-sarana-modal').innerHTML = `
+        <strong>${sarana.lokasi}</strong><br>
+        <span style="color: #60a5fa; font-size: 0.8rem;">
+          Patokan Terakhir: <strong>${terakhir.kwh} kWh</strong> (${terakhir.tanggal})
+        </span>
+      `;
       modalUpdate.style.display = 'flex';
     });
   });
@@ -163,12 +178,12 @@ function renderData() {
   });
 }
 
-// Simpan Sarana Baru
+// Simpan Titik Sarana Baru
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const btnSubmit = form.querySelector('button[type="submit"]');
   btnSubmit.disabled = true;
-  btnSubmit.textContent = 'Memproses foto...';
+  btnSubmit.textContent = 'Menyimpan...';
 
   const lokasi = document.getElementById('lokasi').value.trim();
   const tipe = document.getElementById('tipe').value;
@@ -222,6 +237,5 @@ btnTutupModal.addEventListener('click', () => {
   modalUpdate.style.display = 'none';
 });
 
-// Inisialisasi
 inisialisasiPenampilFoto();
 renderData();
