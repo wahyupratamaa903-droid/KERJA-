@@ -10,13 +10,13 @@
   <div class="wrapper">
     <header>
       <h1>Monitoring Sarana Lapangan</h1>
-      <p>Pencatatan Sarana & Kontrol Token Listrik</p>
+      <p>Pencatatan Sarana & Prediksi Habis Token</p>
     </header>
 
     <section class="panel-statistik">
       <div class="stat-item">
         <span class="stat-angka" id="stat-total">0</span>
-        <span class="stat-label">Total Titik</span>
+        <span class="stat-label">Total Sarana</span>
       </div>
       <div class="stat-item danger">
         <span class="stat-angka" id="stat-isi">0</span>
@@ -25,45 +25,78 @@
     </section>
 
     <form id="form-sarana" class="form-box">
-      <h2 class="form-title">Tambah Titik Sarana</h2>
+      <h2 class="form-title">Catat Titik Sarana</h2>
 
       <div class="form-group">
         <label for="lokasi">Nama Titik / Lokasi Jalan</label>
-        <input type="text" id="lokasi" placeholder="Contoh: Jl. S. Parman (Depot Amira)" required>
+        <input type="text" id="lokasi" placeholder="Contoh: Jl. S. Parman (Dekat Amira)" required>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="tipe">Tipe Sarana</label>
+          <select id="tipe">
+            <option value="Billboard">Billboard</option>
+            <option value="Baliho">Baliho</option>
+            <option value="Bando Jalan">Bando Jalan</option>
+            <option value="Neon Box">Neon Box</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="jumlahLampu">Jumlah Titik Lampu</label>
+          <input type="number" id="jumlahLampu" placeholder="Contoh: 5" min="0" required>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="tanggalPengecekan">Tanggal Catat</label>
+          <input type="date" id="tanggalPengecekan" required>
+        </div>
+
+        <div class="form-group">
+          <label for="sisaKwh">Sisa Token (kWh)</label>
+          <input type="number" step="any" id="sisaKwh" placeholder="Contoh: 10000" required>
+        </div>
       </div>
 
       <div class="form-group">
-        <label for="tipe">Tipe Sarana</label>
-        <select id="tipe">
-          <option value="Billboard">Billboard</option>
-          <option value="Baliho">Baliho</option>
-          <option value="Bando Jalan">Bando Jalan</option>
-          <option value="Neon Box">Neon Box</option>
-          <option value="Lainnya">Lainnya</option>
-        </select>
+        <label for="fotoSarana">Dokumentasi Foto (Pilih dari Galeri)</label>
+        <input type="file" id="fotoSarana" accept="image/jpeg,image/png,image/webp">
+        <img id="preview-foto" class="preview-thumbnail" alt="Pratinjau Foto">
       </div>
 
-      <div class="form-group">
-        <label for="jumlahLampu">Jumlah Titik Lampu</label>
-        <input type="number" id="jumlahLampu" placeholder="Masukkan jumlah lampu (misal: 5)" min="1" required>
-      </div>
-
-      <div class="form-group">
-        <label for="sisaKwh">Sisa Token Listrik (kWh)</label>
-        <input type="number" step="any" id="sisaKwh" placeholder="Masukkan angka kWh di meteran" required>
-      </div>
-
-      <div class="form-group">
-        <label for="fotoSarana">Pilih Foto Sarana (Galeri)</label>
-        <input type="file" id="fotoSarana" accept="image/*">
-        <img id="preview-foto" class="preview-thumbnail" alt="Pratinjau">
-      </div>
-
-      <button type="submit" class="btn-submit">Simpan & Hitung Status</button>
+      <button type="submit" class="btn-submit">Simpan Sarana</button>
     </form>
 
-    <h2 class="judul-bagian">Daftar Sarana Terdata</h2>
+    <h2 class="judul-bagian">Daftar Sarana</h2>
     <div id="daftar-sarana"></div>
+  </div>
+
+  <!-- Modal Popup Update Token Baru -->
+  <div id="modal-update" class="modal-backdrop">
+    <div class="modal-konten">
+      <h3>Update Token Terbaru</h3>
+      <p id="nama-sarana-modal"></p>
+
+      <form id="form-update">
+        <div class="form-group">
+          <label for="modalTanggal">Tanggal Pengecekan Baru</label>
+          <input type="date" id="modalTanggal" required>
+        </div>
+
+        <div class="form-group">
+          <label for="modalKwh">Sisa Token Sekarang (kWh)</label>
+          <input type="number" step="any" id="modalKwh" placeholder="Contoh: 5000" required>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" id="btn-tutup-modal" class="btn-hapus">Batal</button>
+          <button type="submit" class="btn-submit">Simpan Catatan</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <script type="module" src="js/app.js"></script>
