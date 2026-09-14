@@ -1,20 +1,20 @@
-// js/token-calc.js - Logika perhitungan daya & status token
+// js/token-calc.js - Perhitungan otomatis daya & durasi token
 
-export function hitungKetahananToken(jumlahLampu, wattPerLampu, sisaKwh, jamNyala = 12) {
+export function hitungKetahananToken(jumlahLampu, sisaKwh, wattPerLampu = 40, jamNyala = 12) {
   const totalWatt = jumlahLampu * wattPerLampu;
   const pemakaianKwhPerHari = (totalWatt * jamNyala) / 1000;
 
   if (pemakaianKwhPerHari <= 0) {
     return {
       status: 'aman',
-      hariTersisa: Infinity,
-      pesan: 'Beban lampu 0 Watt'
+      estimasiHari: 999,
+      pemakaianHarian: '0',
+      butuhIsi: false
     };
   }
 
   const estimasiHari = Math.floor(sisaKwh / pemakaianKwhPerHari);
 
-  // Jika token sisa kurang dari 3 hari, beri tanda waspada/merah
   let status = 'aman';
   if (estimasiHari <= 2) {
     status = 'kritis';

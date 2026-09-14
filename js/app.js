@@ -2,33 +2,110 @@ import { hitungKetahananToken } from './token-calc.js';
 
 const form = document.getElementById('form-sarana');
 const containerDaftar = document.getElementById('daftar-sarana');
+const inputFoto = document.getElementById('fotoSarana');
+const previewImg = document.getElementById('preview-foto');
+const totalTitikEl = document.getElementById('stat-total');
+const perluIsiEl = document.getElementById('stat-isi');
 
-// Simpan data sementara di localStorage HP
 let dataSarana = JSON.parse(localStorage.getItem('sarana-kerja') || '[]');
+
+// Kompres foto dari galeri agar tidak melebihi kuota penyimpanan browser
+function kompresGambar(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (e) => {
+      const img = new Image();
+      img.src = e.target.result;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_LEBAR = 800;
+        let scale = 1;
+        if (img.width > MAX_LEBAR) {
+          scale = MAX_LEBAR / img.width;
+        }
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.7));
+      };
+      img.onerror = () => resolve('');
+    };
+    reader.onerror = () => resolve('');
+  });
+}
+
+// Pratinjau gambar saat user memilih file dari galeri
+inputFoto.addEventListener('change', () => {
+  const file = inputFoto.files[0];
+  if (file) {
+    const url = URL.createObjectURL(file);
+    previewImg.src = url;
+    previewImg.style.display = 'block';
+  } else {
+    previewImg.style.display = 'none';
+  }
+});
+
+function perbaruiStatistik() {
+  const total = dataSarana.length;
+  const perluIsi = dataSarana.filter(item => item.hasilToken.butuhIsi).length;
+  totalTitikEl.textContent = total;
+  perluIsiEl.textContent = perluIsi;
+}
 
 function renderData() {
   containerDaftar.innerHTML = '';
+  perbaruiStatistik();
+
   if (dataSarana.length === 0) {
-    containerDaftar.innerHTML = '<p class="kosong">Belum ada data sarana yang dicatat.</p>';
+    containerDaftar.innerHTML = `
+      <div class="state-kosong">
+        <p>Belum ada titik sarana yang tersimpan.</p>
+        <small>Silakan isi formulir di atas untuk mencatat.</small>
+      </div>
+    `;
     return;
   }
 
   dataSarana.forEach((item, index) => {
-    const kartu = document.createElement('div');
-    kartu.className = `kartu-sarana ${item.hasilToken.status}`;
+    const kartu = document.createElement('article');
+    kartu.className = `kartu-sarana status-${item.hasilToken.status}`;
 
     kartu.innerHTML = `
-      <div class="header-kartu">
-        <h3>${item.lokasi}</h3>
-        <span class="badge ${item.hasilToken.status}">
-          ${item.hasilToken.butuhIsi ? 'PERLU DIISI' : 'AMAN'}
+      <div class="kartu-header">
+        <div>
+          <span class="tipe-sarana">${item.tipe}</span>
+          <h3 class="lokasi-sarana">${item.lokasi}</h3>
+        </div>
+        <span class="tag-status ${item.hasilToken.status}">
+          ${item.hasilToken.status === 'kritis' ? 'SEGERA ISI' : item.hasilToken.status === 'waspada' ? 'WASPADA' : 'AMAN'}
         </span>
       </div>
-      <p><strong>Tipe:</strong> ${item.tipe}</p>
-      <p><strong>Lampu:</strong> ${item.jumlahLampu} titik (@${item.wattPerLampu}W)</p>
-      <p><strong>Sisa Token:</strong> ${item.sisaKwh} kWh (~${item.hasilToken.estimasiHari} hari lagi)</p>
-      ${item.foto ? `<img src="${item.foto}" class="pratinjau-foto" alt="Foto sarana">` : ''}
-      <button class="btn-hapus" data-index="${index}">Hapus</button>
+
+      <div class="kartu-body">
+        <div class="info-grid">
+          <div class="info-box">
+            <span class="label-info">Jumlah Lampu</span>
+            <span class="nilai-info">${item.jumlahLampu} Titik</span>
+          </div>
+          <div class="info-box">
+            <span class="label-info">Sisa Token</span>
+            <span class="nilai-info">${item.sisaKwh} kWh</span>
+          </div>
+          <div class="info-box full">
+            <span class="label-info">Estimasi Bertahan</span>
+            <span class="nilai-info sorot">± ${item.hasilToken.estimasiHari} Hari</span>
+          </div>
+        </div>
+
+        ${item.foto ? `<img src="${item.foto}" class="foto-sarana" alt="Dokumentasi ${item.lokasi}">` : ''}
+      </div>
+
+      <div class="kartu-footer">
+        <button class="btn-hapus" data-index="${index}">Hapus Data</button>
+      </div>
     `;
 
     containerDaftar.appendChild(kartu);
@@ -36,38 +113,54 @@ function renderData() {
 
   document.querySelectorAll('.btn-hapus').forEach(btn => {
     btn.addEventListener('click', (e) => {
-      const idx = e.target.getAttribute('data-index');
-      dataSarana.splice(idx, 1);
-      localStorage.setItem('sarana-kerja', JSON.stringify(dataSarana));
-      renderData();
+      const idx = Number(e.target.getAttribute('data-index'));
+      if (confirm('Hapus data sarana ini?')) {
+        dataSarana.splice(idx, 1);
+        localStorage.setItem('sarana-kerja', JSON.stringify(dataSarana));
+        renderData();
+      }
     });
   });
 }
 
-form.addEventListener('submit', (e) => {
+form.addEventListener('submit', async (e) => {
   e.preventDefault();
 
-  const lokasi = document.getElementById('lokasi').value;
+  const lokasi = document.getElementById('lokasi').value.trim();
   const tipe = document.getElementById('tipe').value;
   const jumlahLampu = Number(document.getElementById('jumlahLampu').value);
-  const wattPerLampu = Number(document.getElementById('wattPerLampu').value);
   const sisaKwh = Number(document.getElementById('sisaKwh').value);
-  const inputFoto = document.getElementById('fotoSarana');
+  const btnSubmit = form.querySelector('button[type="submit"]');
 
-  const prosesSimpan = (fotoBase64 = '') => {
-    const hasilToken = hitungKetahananToken(jumlahLampu, wattPerLampu, sisaKwh);
-    dataSarana.push({ lokasi, tipe, jumlahLampu, wattPerLampu, sisaKwh, foto: fotoBase64, hasilToken });
+  btnSubmit.disabled = true;
+  btnSubmit.textContent = 'Memproses...';
+
+  let fotoKompres = '';
+  if (inputFoto.files && inputFoto.files[0]) {
+    fotoKompres = await kompresGambar(inputFoto.files[0]);
+  }
+
+  const hasilToken = hitungKetahananToken(jumlahLampu, sisaKwh);
+
+  dataSarana.unshift({
+    lokasi,
+    tipe,
+    jumlahLampu,
+    sisaKwh,
+    foto: fotoKompres,
+    hasilToken
+  });
+
+  try {
     localStorage.setItem('sarana-kerja', JSON.stringify(dataSarana));
     form.reset();
+    previewImg.style.display = 'none';
     renderData();
-  };
-
-  if (inputFoto.files && inputFoto.files[0]) {
-    const reader = new FileReader();
-    reader.onload = (event) => prosesSimpan(event.target.result);
-    reader.readAsDataURL(inputFoto.files[0]);
-  } else {
-    prosesSimpan('');
+  } catch (err) {
+    alert('Memori penyimpanan penuh. Coba hapus beberapa data lama.');
+  } finally {
+    btnSubmit.disabled = false;
+    btnSubmit.textContent = 'Simpan & Hitung Status';
   }
 });
 

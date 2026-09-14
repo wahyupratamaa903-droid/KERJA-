@@ -2,54 +2,67 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Monitoring Sarana & Token</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Monitoring Sarana Bengkulu</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <div class="container">
-    <h1>Monitoring Sarana Lapangan</h1>
+  <div class="wrapper">
+    <header>
+      <h1>Monitoring Sarana Lapangan</h1>
+      <p>Pencatatan Sarana & Kontrol Token Listrik</p>
+    </header>
 
-    <form id="form-sarana">
-      <div class="field">
-        <label for="lokasi">Nama Titik / Lokasi</label>
-        <input type="text" id="lokasi" placeholder="Contoh: Jl. S. Parman" required>
+    <section class="panel-statistik">
+      <div class="stat-item">
+        <span class="stat-angka" id="stat-total">0</span>
+        <span class="stat-label">Total Titik</span>
+      </div>
+      <div class="stat-item danger">
+        <span class="stat-angka" id="stat-isi">0</span>
+        <span class="stat-label">Perlu Diisi</span>
+      </div>
+    </section>
+
+    <form id="form-sarana" class="form-box">
+      <h2 class="form-title">Tambah Titik Sarana</h2>
+
+      <div class="form-group">
+        <label for="lokasi">Nama Titik / Lokasi Jalan</label>
+        <input type="text" id="lokasi" placeholder="Contoh: Jl. S. Parman (Depot Amira)" required>
       </div>
 
-      <div class="field">
+      <div class="form-group">
         <label for="tipe">Tipe Sarana</label>
         <select id="tipe">
           <option value="Billboard">Billboard</option>
           <option value="Baliho">Baliho</option>
           <option value="Bando Jalan">Bando Jalan</option>
+          <option value="Neon Box">Neon Box</option>
           <option value="Lainnya">Lainnya</option>
         </select>
       </div>
 
-      <div class="field">
+      <div class="form-group">
         <label for="jumlahLampu">Jumlah Titik Lampu</label>
-        <input type="number" id="jumlahLampu" placeholder="Contoh: 5" required>
+        <input type="number" id="jumlahLampu" placeholder="Masukkan jumlah lampu (misal: 5)" min="1" required>
       </div>
 
-      <div class="field">
-        <label for="wattPerLampu">Daya per Lampu (Watt / FL)</label>
-        <input type="number" id="wattPerLampu" value="40" placeholder="40" required>
-      </div>
-
-      <div class="field">
+      <div class="form-group">
         <label for="sisaKwh">Sisa Token Listrik (kWh)</label>
-        <input type="number" step="0.1" id="sisaKwh" placeholder="Contoh: 12.5" required>
+        <input type="number" step="any" id="sisaKwh" placeholder="Masukkan angka kWh di meteran" required>
       </div>
 
-      <div class="field">
-        <label for="fotoSarana">Foto Sarana</label>
-        <input type="file" id="fotoSarana" accept="image/*" capture="environment">
+      <div class="form-group">
+        <label for="fotoSarana">Pilih Foto Sarana (Galeri)</label>
+        <input type="file" id="fotoSarana" accept="image/*">
+        <img id="preview-foto" class="preview-thumbnail" alt="Pratinjau">
       </div>
 
-      <button type="submit">Simpan & Hitung Status</button>
+      <button type="submit" class="btn-submit">Simpan & Hitung Status</button>
     </form>
 
-    <h2>Daftar Sarana</h2>
+    <h2 class="judul-bagian">Daftar Sarana Terdata</h2>
     <div id="daftar-sarana"></div>
   </div>
 
