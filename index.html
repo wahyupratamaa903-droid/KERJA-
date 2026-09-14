@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Monitoring Sarana Bengkulu</title>
+  <title>Sistem Kerja Lapangan</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <div class="wrapper">
     <header>
       <h1>Monitoring Sarana Lapangan</h1>
-      <p>Pencatatan Sarana & Prediksi Habis Token</p>
+      <p>Pencatatan Sarana & Prediksi Token Listrik</p>
     </header>
 
     <section class="panel-statistik">
@@ -25,7 +25,7 @@
     </section>
 
     <form id="form-sarana" class="form-box">
-      <h2 class="form-title">Catat Titik Sarana</h2>
+      <h2 class="form-title">Catat Titik Sarana Baru</h2>
 
       <div class="form-group">
         <label for="lokasi">Nama Titik / Lokasi Jalan</label>
@@ -44,9 +44,18 @@
         </div>
 
         <div class="form-group">
-          <label for="jumlahLampu">Jumlah Titik Lampu</label>
-          <input type="number" id="jumlahLampu" placeholder="Contoh: 5" min="0" required>
+          <label for="jenisLampu">Jenis Lampu</label>
+          <select id="jenisLampu">
+            <option value="FL">FL (Front Light / Luar)</option>
+            <option value="BL">BL (Back Light / Dalam)</option>
+            <option value="NONE">Tanpa Lampu</option>
+          </select>
         </div>
+      </div>
+
+      <div class="form-group">
+        <label for="jumlahLampu">Jumlah Titik Lampu</label>
+        <input type="number" id="jumlahLampu" placeholder="Jumlah titik lampu FL" min="0">
       </div>
 
       <div class="form-row">
@@ -57,14 +66,13 @@
 
         <div class="form-group">
           <label for="sisaKwh">Sisa Token (kWh)</label>
-          <input type="number" step="any" id="sisaKwh" placeholder="Contoh: 10000" required>
+          <input type="number" step="any" id="sisaKwh" placeholder="Contoh: 10542" required>
         </div>
       </div>
 
       <div class="form-group">
-        <label for="fotoSarana">Dokumentasi Foto (Pilih dari Galeri)</label>
-        <input type="file" id="fotoSarana" accept="image/jpeg,image/png,image/webp">
-        <img id="preview-foto" class="preview-thumbnail" alt="Pratinjau Foto">
+        <label for="fotoSarana">Dokumentasi Foto (Bisa Pilih Banyak dari Galeri)</label>
+        <input type="file" id="fotoSarana" accept="image/jpeg,image/png,image/webp" multiple>
       </div>
 
       <button type="submit" class="btn-submit">Simpan Sarana</button>
@@ -74,15 +82,15 @@
     <div id="daftar-sarana"></div>
   </div>
 
-  <!-- Modal Popup Update Token Baru -->
+  <!-- Popup Update Token Baru -->
   <div id="modal-update" class="modal-backdrop">
     <div class="modal-konten">
-      <h3>Update Token Terbaru</h3>
-      <p id="nama-sarana-modal"></p>
+      <h3 style="margin-bottom: 6px;">Catat Token Baru</h3>
+      <p id="nama-sarana-modal" style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 12px;"></p>
 
       <form id="form-update">
         <div class="form-group">
-          <label for="modalTanggal">Tanggal Pengecekan Baru</label>
+          <label for="modalTanggal">Tanggal Cek Baru</label>
           <input type="date" id="modalTanggal" required>
         </div>
 
@@ -91,13 +99,30 @@
           <input type="number" step="any" id="modalKwh" placeholder="Contoh: 5000" required>
         </div>
 
-        <div class="modal-actions">
+        <div style="display: flex; gap: 8px; margin-top: 14px;">
           <button type="button" id="btn-tutup-modal" class="btn-hapus">Batal</button>
-          <button type="submit" class="btn-submit">Simpan Catatan</button>
+          <button type="submit" class="btn-submit">Simpan</button>
         </div>
       </form>
     </div>
   </div>
+
+  <!-- Popup Pembesar Foto (Lightbox) -->
+  <div id="modal-foto" class="modal-backdrop">
+    <img id="img-zoom" class="modal-foto-isi" alt="Zoom Foto">
+  </div>
+
+  <!-- Navigasi Menu Masa Depan -->
+  <nav class="nav-bottom">
+    <a href="#" class="nav-item active">
+      <span>📍</span>
+      <span>Sarana</span>
+    </a>
+    <a href="#" class="nav-item" onclick="alert('Menu fitur berikutnya akan ditambahkan di sini.')">
+      <span>➕</span>
+      <span>Fitur Baru</span>
+    </a>
+  </nav>
 
   <script type="module" src="js/app.js"></script>
 </body>
