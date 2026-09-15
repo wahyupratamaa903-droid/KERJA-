@@ -24,6 +24,8 @@
       </div>
     </section>
 
+    <button type="button" id="btn-ekspor-wa" class="btn-wa-laporan">Kirim Rekap ke WhatsApp</button>
+
     <form id="form-sarana" class="form-box">
       <h2 class="form-title">Catat Titik Sarana Baru</h2>
 
@@ -71,10 +73,10 @@
       </div>
 
       <div class="form-group">
-        <label>Titik Koordinat GPS</label>
-        <div class="gps-wrapper">
-          <button type="button" id="btn-ambil-gps" class="btn-gps">Kunci GPS Sekarang</button>
-          <span id="status-gps" class="status-gps-text">Belum diambil</span>
+        <label for="input-koordinat">Titik Koordinat (Bisa Otomatis atau Ketik/Paste)</label>
+        <div class="gps-input-group">
+          <input type="text" id="input-koordinat" placeholder="Contoh: 3.797733°S, 102.266305°E">
+          <button type="button" id="btn-ambil-gps" class="btn-gps-auto">GPS Otomatis</button>
         </div>
       </div>
 
@@ -99,7 +101,7 @@
     <div id="daftar-sarana"></div>
   </div>
 
-  <!-- Modal Catat Token Baru -->
+  <!-- Modal Update Token -->
   <div id="modal-update" class="modal-backdrop">
     <div class="modal-konten">
       <h3 style="margin-bottom: 6px;">Catat Token Baru</h3>
@@ -124,6 +126,56 @@
     </div>
   </div>
 
+  <!-- Modal Edit Sarana -->
+  <div id="modal-edit" class="modal-backdrop">
+    <div class="modal-konten">
+      <h3 style="margin-bottom: 12px;">Edit Data Sarana</h3>
+
+      <form id="form-edit">
+        <div class="form-group">
+          <label for="edit-lokasi">Nama Titik / Lokasi Jalan</label>
+          <input type="text" id="edit-lokasi" required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-tipe">Tipe Sarana</label>
+            <select id="edit-tipe">
+              <option value="Billboard">Billboard</option>
+              <option value="Baliho">Baliho</option>
+              <option value="Bando Jalan">Bando Jalan</option>
+              <option value="Neon Box">Neon Box</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="edit-jenisLampu">Jenis Lampu</label>
+            <select id="edit-jenisLampu">
+              <option value="FL">FL (Front Light)</option>
+              <option value="BL">BL (Back Light)</option>
+              <option value="NONE">Tanpa Lampu</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="edit-jumlahLampu">Jumlah Titik Lampu</label>
+          <input type="number" id="edit-jumlahLampu" min="0">
+        </div>
+
+        <div class="form-group">
+          <label for="edit-koordinat">Koordinat (Bisa Paste: 3.797733°S, 102.266305°E)</label>
+          <input type="text" id="edit-koordinat">
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-top: 14px;">
+          <button type="button" id="btn-tutup-edit" class="btn-hapus">Batal</button>
+          <button type="submit" class="btn-submit">Simpan Perubahan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Lightbox Foto -->
   <div id="modal-foto" class="modal-backdrop">
     <img id="img-zoom" class="modal-foto-isi" alt="Zoom Foto">
@@ -134,7 +186,7 @@
       <span>📍</span>
       <span>Sarana</span>
     </a>
-    <a href="#" class="nav-item" onclick="alert('Menu fitur berikutnya akan ditambahkan di sini.')">
+    <a href="#" class="nav-item" onclick="alert('Menu berikutnya akan ditambahkan di sini.')">
       <span>➕</span>
       <span>Fitur Baru</span>
     </a>
