@@ -65,6 +65,20 @@ input, select {
 }
 input:disabled { opacity: 0.5; background: #0d121c; }
 
+/* Tombol & Status GPS */
+.gps-wrapper { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
+.btn-gps {
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.status-gps-text { font-size: 0.75rem; color: var(--text-muted); }
+
 .btn-submit {
   width: 100%;
   padding: 12px;
@@ -76,7 +90,44 @@ input:disabled { opacity: 0.5; background: #0d121c; }
   cursor: pointer;
 }
 
-.judul-bagian { font-size: 1rem; margin-bottom: 12px; }
+/* Area Kontrol Cari & Filter */
+.kontrol-pencarian {
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.input-cari-jalan {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+}
+.filter-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.tab-filter {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tab-filter.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+.judul-bagian { font-size: 1rem; margin-bottom: 8px; }
 
 .kartu-sarana {
   background: var(--surface);
@@ -125,7 +176,24 @@ input:disabled { opacity: 0.5; background: #0d121c; }
 .sorot-hari { color: #60a5fa; font-size: 0.9rem; margin-top: 2px; }
 .pesan-catatan { font-size: 0.8rem; color: var(--text-muted); font-style: italic; margin-bottom: 8px; }
 
-/* Galeri Thumbnail Foto */
+/* Tombol Rute Maps */
+.btn-rute-maps {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  background: #064e3b;
+  border: 1px solid #059669;
+  color: #6ee7b7;
+  padding: 8px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+  margin-bottom: 8px;
+}
+
 .galeri-sarana {
   display: flex;
   gap: 6px;
@@ -165,7 +233,6 @@ input:disabled { opacity: 0.5; background: #0d121c; }
   cursor: pointer;
 }
 
-/* Modal Popup Update & Lightbox */
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -191,7 +258,6 @@ input:disabled { opacity: 0.5; background: #0d121c; }
   border-radius: 8px;
 }
 
-/* Bottom Navigation Bar (Struktur Rapi HP) */
 .nav-bottom {
   position: fixed;
   bottom: 0;

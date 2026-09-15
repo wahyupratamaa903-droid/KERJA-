@@ -71,18 +71,35 @@
       </div>
 
       <div class="form-group">
-        <label for="fotoSarana">Dokumentasi Foto (Bisa Pilih Banyak dari Galeri)</label>
+        <label>Titik Koordinat GPS</label>
+        <div class="gps-wrapper">
+          <button type="button" id="btn-ambil-gps" class="btn-gps">Kunci GPS Sekarang</button>
+          <span id="status-gps" class="status-gps-text">Belum diambil</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="fotoSarana">Dokumentasi Foto (Pilih dari Galeri)</label>
         <input type="file" id="fotoSarana" accept="image/jpeg,image/png,image/webp" multiple>
       </div>
 
       <button type="submit" class="btn-submit">Simpan Sarana</button>
     </form>
 
-    <h2 class="judul-bagian">Daftar Sarana</h2>
+    <div class="kontrol-pencarian">
+      <h2 class="judul-bagian">Daftar Sarana</h2>
+      <input type="text" id="input-cari" class="input-cari-jalan" placeholder="Cari nama jalan atau tipe sarana...">
+      <div class="filter-tabs">
+        <button class="tab-filter active" data-filter="semua">Semua</button>
+        <button class="tab-filter" data-filter="perlu-isi">Perlu Diisi</button>
+        <button class="tab-filter" data-filter="aman">Aman</button>
+      </div>
+    </div>
+
     <div id="daftar-sarana"></div>
   </div>
 
-  <!-- Popup Update Token Baru -->
+  <!-- Modal Catat Token Baru -->
   <div id="modal-update" class="modal-backdrop">
     <div class="modal-konten">
       <h3 style="margin-bottom: 6px;">Catat Token Baru</h3>
@@ -107,12 +124,11 @@
     </div>
   </div>
 
-  <!-- Popup Pembesar Foto (Lightbox) -->
+  <!-- Lightbox Foto -->
   <div id="modal-foto" class="modal-backdrop">
     <img id="img-zoom" class="modal-foto-isi" alt="Zoom Foto">
   </div>
 
-  <!-- Navigasi Menu Masa Depan -->
   <nav class="nav-bottom">
     <a href="#" class="nav-item active">
       <span>📍</span>

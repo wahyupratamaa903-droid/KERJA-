@@ -1,5 +1,7 @@
 import { hitungPrediksiHabis } from './token-calc.js';
 import { kompresBanyakFoto, inisialisasiPenampilFoto } from './image-handler.js';
+import { dapatkanKoordinatGPS } from './gps.js';
+import { filterSarana } from './filter.js';
 
 const form = document.getElementById('form-sarana');
 const containerDaftar = document.getElementById('daftar-sarana');
@@ -10,10 +12,18 @@ const modalUpdate = document.getElementById('modal-update');
 const formUpdate = document.getElementById('form-update');
 const btnTutupModal = document.getElementById('btn-tutup-modal');
 
+// Elemen GPS & Pencarian
+const btnAmbilGps = document.getElementById('btn-ambil-gps');
+const statusGpsText = document.getElementById('status-gps');
+const inputCari = document.getElementById('input-cari');
+const tabFilters = document.querySelectorAll('.tab-filter');
+
 let dataSarana = JSON.parse(localStorage.getItem('sarana-kerja-v3') || '[]');
 let indexSaranaTerpilih = null;
+let koordinatTersimpanForm = null;
+let statusFilterAktif = 'semua';
 
-// Tanggal default hari ini
+// Tanggal hari ini
 const tglHariIni = new Date().toISOString().split('T')[0];
 document.getElementById('tanggalPengecekan').value = tglHariIni;
 document.getElementById('modalTanggal').value = tglHariIni;
@@ -35,11 +45,26 @@ selectJenisLampu.addEventListener('change', () => {
   }
 });
 
+// Aksi Ambil GPS di Form
+btnAmbilGps.addEventListener('click', async () => {
+  statusGpsText.textContent = 'Mencari sinyal satelit...';
+  btnAmbilGps.disabled = true;
+  try {
+    const coords = await dapatkanKoordinatGPS();
+    koordinatTersimpanForm = coords;
+    statusGpsText.innerHTML = `<span style="color:#10b981;">Terkunci: ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}</span>`;
+  } catch (err) {
+    statusGpsText.innerHTML = `<span style="color:#ef4444;">${err.message}</span>`;
+  } finally {
+    btnAmbilGps.disabled = false;
+  }
+});
+
 function perbaruiStatistik() {
   const total = dataSarana.length;
   const kritis = dataSarana.filter(item => {
     const info = hitungPrediksiHabis(item.riwayatToken);
-    return info.status === 'kritis';
+    return info.status === 'kritis' || info.status === 'waspada';
   }).length;
 
   document.getElementById('stat-total').textContent = total;
@@ -50,17 +75,20 @@ function renderData() {
   containerDaftar.innerHTML = '';
   perbaruiStatistik();
 
-  if (dataSarana.length === 0) {
+  const dataTersaring = filterSarana(dataSarana, inputCari.value, statusFilterAktif, hitungPrediksiHabis);
+
+  if (dataTersaring.length === 0) {
     containerDaftar.innerHTML = `
       <div class="state-kosong">
-        <p>Belum ada titik sarana tersimpan.</p>
-        <small>Isi formulir di atas untuk mulai mencatat.</small>
+        <p>Tidak ada data sarana yang cocok.</p>
+        <small>Coba ubah kata kunci pencarian atau filter status.</small>
       </div>
     `;
     return;
   }
 
-  dataSarana.forEach((item, index) => {
+  dataTersaring.forEach((item) => {
+    const originalIndex = dataSarana.findIndex(s => s.id === item.id);
     const info = hitungPrediksiHabis(item.riwayatToken);
     const kartu = document.createElement('article');
     kartu.className = `kartu-sarana status-${info.status}`;
@@ -91,7 +119,7 @@ function renderData() {
     }
     blokRiwayat += `</div>`;
 
-    // Analisa & Prediksi Tanggal
+    // Analisa Pemakaian & Prediksi
     let blokAnalisa = '';
     if (info.pesan) {
       blokAnalisa = `<p class="pesan-catatan">${info.pesan}</p>`;
@@ -103,11 +131,21 @@ function renderData() {
       blokAnalisa = `
         <div class="grid-ringkasan">
           <div>${teksPemakaian}</div>
-          <div>Rata-rata: <strong>${info.rataPerHari} kWh/hr</strong> ${info.isTopUp ? '(riwayat lalu)' : ''}</div>
+          <div>Rata-rata: <strong>${info.rataPerHari} kWh/hr</strong> ${info.isTopUp ? '(riwayat)' : ''}</div>
           <div class="sorot-hari">
             Estimasi: <strong>± ${info.estimasiHari} Hari Lagi (${info.tanggalHabis})</strong>
           </div>
         </div>
+      `;
+    }
+
+    // Tombol Rute Maps
+    let tombolMaps = '';
+    if (item.koordinat && item.koordinat.lat) {
+      tombolMaps = `
+        <a href="https://www.google.com/maps/dir/?api=1&destination=${item.koordinat.lat},${item.koordinat.lng}" target="_blank" class="btn-rute-maps">
+          Navigasi Maps
+        </a>
       `;
     }
 
@@ -135,19 +173,20 @@ function renderData() {
       <div class="kartu-body">
         ${blokRiwayat}
         ${blokAnalisa}
+        ${tombolMaps}
         ${galeriHtml}
       </div>
 
       <div class="kartu-footer">
-        <button class="btn-update" data-index="${index}">+ Catat Token Baru</button>
-        <button class="btn-hapus" data-index="${index}">Hapus</button>
+        <button class="btn-update" data-index="${originalIndex}">+ Catat Token Baru</button>
+        <button class="btn-hapus" data-index="${originalIndex}">Hapus</button>
       </div>
     `;
 
     containerDaftar.appendChild(kartu);
   });
 
-  // Modal Update dengan info patokan sebelumnya
+  // Pasang Event Tombol
   document.querySelectorAll('.btn-update').forEach(btn => {
     btn.addEventListener('click', (e) => {
       indexSaranaTerpilih = Number(e.target.getAttribute('data-index'));
@@ -155,7 +194,6 @@ function renderData() {
       const riwayatUrut = [...sarana.riwayatToken].sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
       const terakhir = riwayatUrut[riwayatUrut.length - 1];
 
-      // Tampilkan patokan token terakhir di dalam popup
       document.getElementById('nama-sarana-modal').innerHTML = `
         <strong>${sarana.lokasi}</strong><br>
         <span style="color: #60a5fa; font-size: 0.8rem;">
@@ -178,7 +216,19 @@ function renderData() {
   });
 }
 
-// Simpan Titik Sarana Baru
+// Event Pencarian & Filter Status
+inputCari.addEventListener('input', () => renderData());
+
+tabFilters.forEach(tab => {
+  tab.addEventListener('click', () => {
+    tabFilters.forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    statusFilterAktif = tab.getAttribute('data-filter');
+    renderData();
+  });
+});
+
+// Simpan Sarana Baru
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const btnSubmit = form.querySelector('button[type="submit"]');
@@ -203,6 +253,7 @@ form.addEventListener('submit', async (e) => {
     tipe,
     jenisLampu,
     jumlahLampu,
+    koordinat: koordinatTersimpanForm,
     fotos,
     riwayatToken: [{ tanggal, kwh }]
   });
@@ -211,12 +262,14 @@ form.addEventListener('submit', async (e) => {
   form.reset();
   document.getElementById('tanggalPengecekan').value = tglHariIni;
   inputJumlahLampu.disabled = false;
+  koordinatTersimpanForm = null;
+  statusGpsText.textContent = 'Belum diambil';
   btnSubmit.disabled = false;
   btnSubmit.textContent = 'Simpan Sarana';
   renderData();
 });
 
-// Update Token Baru
+// Update Catatan Token Baru
 formUpdate.addEventListener('submit', (e) => {
   e.preventDefault();
   if (indexSaranaTerpilih === null) return;
