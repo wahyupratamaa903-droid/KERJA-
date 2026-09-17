@@ -3,8 +3,11 @@ import { kompresBanyakFoto, inisialisasiPenampilFoto } from './image-handler.js'
 import { dapatkanKoordinatGPS, parsingKoordinatManual } from './gps.js';
 import { filterSarana } from './filter.js';
 import { kirimLaporanKeWhatsApp } from './export-wa.js';
+import { hitungJarakKm, urutkanRuteTerdekat } from './patrol-route.js';
+import { hitungEstimasiBiaya } from './budget-calc.js';
+import { cetakDokumenPdfResmi } from './pdf-report.js';
+import { scanAngkaMeteranDariFile } from './ocr.js';
 
-// Elemen Antarmuka
 const form = document.getElementById('form-sarana');
 const containerDaftar = document.getElementById('daftar-sarana');
 const selectJenisLampu = document.getElementById('jenisLampu');
@@ -14,28 +17,49 @@ const inputKoordinat = document.getElementById('input-koordinat');
 const btnAmbilGps = document.getElementById('btn-ambil-gps');
 const btnEksporWa = document.getElementById('btn-ekspor-wa');
 
+// Toolbar Tombol Baru
+const btnToolRute = document.getElementById('btn-tool-rute');
+const btnToolAnggaran = document.getElementById('btn-tool-anggaran');
+const btnToolPdf = document.getElementById('btn-tool-pdf');
+
+// Elemen OCR
+const inputFileOcr = document.getElementById('input-file-ocr');
+const btnScanForm = document.getElementById('btn-scan-form');
+const btnScanModal = document.getElementById('btn-scan-modal');
+let targetInputOcr = null;
+
+// Modal Update Token
 const modalUpdate = document.getElementById('modal-update');
 const formUpdate = document.getElementById('form-update');
 const btnTutupModal = document.getElementById('btn-tutup-modal');
 
+// Modal Anggaran
+const modalAnggaran = document.getElementById('modal-anggaran');
+const kontenRincianAnggaran = document.getElementById('konten-rincian-anggaran');
+const btnTutupAnggaran = document.getElementById('btn-tutup-anggaran');
+
+// Modal Edit Sarana
 const modalEdit = document.getElementById('modal-edit');
 const formEdit = document.getElementById('form-edit');
 const btnTutupEdit = document.getElementById('btn-tutup-edit');
 const editJenisLampu = document.getElementById('edit-jenisLampu');
 const editJumlahLampu = document.getElementById('edit-jumlahLampu');
 
+// Pencarian & Filter
 const inputCari = document.getElementById('input-cari');
 const tabFilters = document.querySelectorAll('.tab-filter');
 
 let dataSarana = [];
 let indexSaranaTerpilih = null;
 let statusFilterAktif = 'semua';
+let posisiUserSekarang = null;
+let modeRuteAktif = false;
 
 const tglHariIni = new Date().toISOString().split('T')[0];
 document.getElementById('tanggalPengecekan').value = tglHariIni;
 document.getElementById('modalTanggal').value = tglHariIni;
 
-// Logika Lampu
+// Logika Lampu Form Tambah & Edit
 selectJenisLampu.addEventListener('change', () => {
   if (selectJenisLampu.value === 'FL') {
     inputJumlahLampu.disabled = false;
@@ -55,6 +79,7 @@ editJenisLampu.addEventListener('change', () => {
   }
 });
 
+// Fitur GPS Otomatis Form
 btnAmbilGps.addEventListener('click', async () => {
   btnAmbilGps.textContent = 'Mencari...';
   btnAmbilGps.disabled = true;
@@ -69,6 +94,109 @@ btnAmbilGps.addEventListener('click', async () => {
   }
 });
 
+// Fitur 1: Optimasi Rute Patroli
+btnToolRute.addEventListener('click', async () => {
+  if (modeRuteAktif) {
+    modeRuteAktif = false;
+    btnToolRute.classList.remove('active-route');
+    renderData();
+    return;
+  }
+
+  btnToolRute.innerHTML = `<span>⏳</span><span>Mencari GPS...</span>`;
+  try {
+    posisiUserSekarang = await dapatkanKoordinatGPS();
+    modeRuteAktif = true;
+    btnToolRute.classList.add('active-route');
+    btnToolRute.innerHTML = `<span>🧭</span><span>Rute Aktif</span>`;
+    renderData();
+  } catch (err) {
+    alert('Gagal membaca lokasi Anda: ' + err.message);
+    btnToolRute.innerHTML = `<span>🧭</span><span>Rute Patroli</span>`;
+  }
+});
+
+// Fitur 2: Estimasi Anggaran
+btnToolAnggaran.addEventListener('click', () => {
+  const hasil = hitungEstimasiBiaya(dataSarana, hitungPrediksiHabis);
+
+  let rincianHtml = `
+    <div style="background:#0f172a; padding:10px; border-radius:8px; margin-bottom:12px; border:1px solid #1e293b;">
+      <div style="font-size:0.8rem; color:#94a3b8;">Total Kebutuhan Anggaran:</div>
+      <div style="font-size:1.3rem; font-weight:800; color:#10b981;">Rp ${hasil.totalEstimasiBiaya.toLocaleString('id-ID')}</div>
+      <div style="font-size:0.75rem; color:#60a5fa; margin-top:2px;">Cadangan 30 hari untuk ${hasil.saranaKritis.length} sarana kritis</div>
+    </div>
+  `;
+
+  if (hasil.saranaKritis.length === 0) {
+    rincianHtml += `<p style="font-size:0.85rem; color:#10b981;">Semua sarana dalam kondisi aman.</p>`;
+  } else {
+    rincianHtml += `<div style="display:flex; flex-direction:column; gap:8px;">`;
+    hasil.saranaKritis.forEach(item => {
+      rincianHtml += `
+        <div style="background:#1a2336; padding:8px 10px; border-radius:6px; border-left:3px solid #ef4444; font-size:0.8rem;">
+          <strong>${item.lokasi}</strong><br>
+          <span style="color:#94a3b8;">Sisa: ${item.sisaKwh} kWh • Habis: ±${item.estimasiHari} hr</span><br>
+          <span style="color:#f59e0b; font-weight:600;">Perkiraan Beli: Rp ${item.estimasiRp.toLocaleString('id-ID')} (${item.kebutuhanKwh} kWh)</span>
+        </div>
+      `;
+    });
+    rincianHtml += `</div>`;
+  }
+
+  kontenRincianAnggaran.innerHTML = rincianHtml;
+  modalAnggaran.style.display = 'flex';
+});
+
+btnTutupAnggaran.addEventListener('click', () => {
+  modalAnggaran.style.display = 'none';
+});
+
+// Fitur 3: Ekspor Dokumen PDF Resmi
+btnToolPdf.addEventListener('click', () => {
+  if (dataSarana.length === 0) {
+    alert('Belum ada data untuk dicetak.');
+    return;
+  }
+  const hasilAnggaran = hitungEstimasiBiaya(dataSarana, hitungPrediksiHabis);
+  cetakDokumenPdfResmi(dataSarana, hitungPrediksiHabis, hasilAnggaran);
+});
+
+// Fitur 4: Scan Kamera Meteran (OCR)
+btnScanForm.addEventListener('click', () => {
+  targetInputOcr = document.getElementById('sisaKwh');
+  inputFileOcr.click();
+});
+
+btnScanModal.addEventListener('click', () => {
+  targetInputOcr = document.getElementById('modalKwh');
+  inputFileOcr.click();
+});
+
+inputFileOcr.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file || !targetInputOcr) return;
+
+  const btnAsal = targetInputOcr.id === 'sisaKwh' ? btnScanForm : btnScanModal;
+  const teksAsli = btnAsal.textContent;
+  btnAsal.disabled = true;
+
+  try {
+    const angkaTerbaca = await scanAngkaMeteranDariFile(file, (pesan) => {
+      btnAsal.textContent = 'Memindai...';
+    });
+    targetInputOcr.value = angkaTerbaca;
+    alert(`Berhasil memindai angka meteran: ${angkaTerbaca} kWh`);
+  } catch (err) {
+    alert('OCR: ' + err.message);
+  } finally {
+    btnAsal.disabled = false;
+    btnAsal.textContent = teksAsli;
+    inputFileOcr.value = '';
+  }
+});
+
+// WhatsApp Share
 btnEksporWa.addEventListener('click', async () => {
   if (dataSarana.length === 0) {
     alert('Belum ada data sarana untuk dilaporkan.');
@@ -76,7 +204,7 @@ btnEksporWa.addEventListener('click', async () => {
   }
   const teksAsli = btnEksporWa.textContent;
   btnEksporWa.disabled = true;
-  btnEksporWa.textContent = 'Menyiapkan Laporan...';
+  btnEksporWa.textContent = 'Menyiapkan Foto & Laporan...';
   try {
     await kirimLaporanKeWhatsApp(dataSarana, hitungPrediksiHabis);
   } catch (err) {
@@ -86,27 +214,6 @@ btnEksporWa.addEventListener('click', async () => {
     btnEksporWa.textContent = teksAsli;
   }
 });
-
-// Fitur Unduh Cadangan Fisik (Anti Hilang)
-function buatTombolCadangan() {
-  if (document.getElementById('btn-cadang-file')) return;
-  const btn = document.createElement('button');
-  btn.id = 'btn-cadang-file';
-  btn.textContent = '📥 Unduh Cadangan Data (File JSON)';
-  btn.style.cssText = 'width:100%; padding:9px; background:#1e293b; color:#94a3b8; border:1px solid #334155; border-radius:8px; font-size:0.75rem; margin-bottom:14px; cursor:pointer; font-weight:600;';
-  btn.addEventListener('click', () => {
-    if (dataSarana.length === 0) {
-      alert('Belum ada data untuk diunduh.');
-      return;
-    }
-    const blob = new Blob([JSON.stringify(dataSarana, null, 2)], { type: 'application/json' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `cadangan_sarana_${tglHariIni}.json`;
-    link.click();
-  });
-  btnEksporWa.insertAdjacentElement('afterend', btn);
-}
 
 function perbaruiStatistik() {
   const total = dataSarana.length;
@@ -122,15 +229,20 @@ function perbaruiStatistik() {
 function renderData() {
   containerDaftar.innerHTML = '';
   perbaruiStatistik();
-  buatTombolCadangan();
 
-  const dataTersaring = filterSarana(dataSarana, inputCari.value, statusFilterAktif, hitungPrediksiHabis);
+  let daftarTampil = [...dataSarana];
+
+  // Jika tombol optimasi rute patroli sedang aktif
+  if (modeRuteAktif && posisiUserSekarang) {
+    daftarTampil = urutkanRuteTerdekat(daftarTampil, posisiUserSekarang);
+  }
+
+  const dataTersaring = filterSarana(daftarTampil, inputCari.value, statusFilterAktif, hitungPrediksiHabis);
 
   if (dataTersaring.length === 0) {
     containerDaftar.innerHTML = `
       <div class="state-kosong">
         <p>Tidak ada titik sarana yang cocok.</p>
-        <small>Penyimpanan lokal terlindungi secara mandiri.</small>
       </div>
     `;
     return;
@@ -146,6 +258,13 @@ function renderData() {
     if (item.jenisLampu === 'FL') teksLampu = `FL (${item.jumlahLampu} Titik)`;
     else if (item.jenisLampu === 'BL') teksLampu = 'BL (Backlight)';
     else teksLampu = 'Non-Lampu';
+
+    // Label jarak dari user jika rute patroli aktif
+    let infoJarakHtml = '';
+    if (modeRuteAktif && posisiUserSekarang && item.koordinat && item.koordinat.lat) {
+      const jarak = hitungJarakKm(posisiUserSekarang.lat, posisiUserSekarang.lng, item.koordinat.lat, item.koordinat.lng);
+      infoJarakHtml = `<span class="badge-jarak">📍 ± ${jarak.toFixed(2)} km dari posisi Anda</span>`;
+    }
 
     let blokRiwayat = `
       <div class="baris-riwayat">
@@ -205,6 +324,7 @@ function renderData() {
         <div>
           <span class="tipe-sarana">${item.tipe} • ${teksLampu}</span>
           <h3 class="lokasi-sarana">${item.lokasi}</h3>
+          ${infoJarakHtml}
         </div>
         <span class="tag-status ${info.status}">
           ${info.isTopUp ? 'DIISI ULANG' : info.status === 'kritis' ? 'PERLU DIISI' : info.status === 'waspada' ? 'WASPADA' : info.status === 'aman' ? 'AMAN' : 'AKTIF'}
@@ -373,46 +493,9 @@ formUpdate.addEventListener('submit', (e) => {
 btnTutupModal.addEventListener('click', () => { modalUpdate.style.display = 'none'; });
 btnTutupEdit.addEventListener('click', () => { modalEdit.style.display = 'none'; });
 
-// Fungsi Penyelamat: Menyisir seluruh memori browser tanpa kecuali
-function pulihkanDataSemuaKunci() {
-  let hasil = [];
-
-  // 1. Cek semua riwayat kunci nama yang pernah dipakai
-  const daftarKunci = ['sarana-kerja-v3', 'sarana-kerja-v2', 'sarana-kerja', 'data-sarana'];
-  for (const k of daftarKunci) {
-    try {
-      const data = JSON.parse(localStorage.getItem(k) || '[]');
-      if (Array.isArray(data) && data.length > hasil.length) {
-        hasil = data;
-      }
-    } catch (e) {}
-  }
-
-  // 2. Jika masih kosong, periksa seluruh isi penyimpanan browser
-  if (hasil.length === 0) {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      try {
-        const val = JSON.parse(localStorage.getItem(key));
-        if (Array.isArray(val) && val.length > 0 && (val[0].lokasi || val[0].riwayatToken)) {
-          if (val.length > hasil.length) {
-            hasil = val;
-          }
-        }
-      } catch (e) {}
-    }
-  }
-
-  // Amankan data yang ditemukan ke kunci permanen
-  if (hasil.length > 0) {
-    localStorage.setItem('sarana-kerja-v3', JSON.stringify(hasil));
-  }
-  return hasil;
-}
-
 function inisialisasiAplikasi() {
   inisialisasiPenampilFoto();
-  dataSarana = pulihkanDataSemuaKunci();
+  dataSarana = JSON.parse(localStorage.getItem('sarana-kerja-v3') || '[]');
   renderData();
 }
 

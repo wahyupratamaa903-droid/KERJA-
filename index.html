@@ -26,6 +26,25 @@
 
     <button type="button" id="btn-ekspor-wa" class="btn-wa-laporan">Kirim Rekap ke WhatsApp</button>
 
+    <!-- Toolbar Alat Lapangan Pengganti Tombol Lama -->
+    <div class="toolbar-lapangan">
+      <button type="button" id="btn-tool-rute" class="btn-tool">
+        <span>🧭</span>
+        <span>Rute Patroli</span>
+      </button>
+      <button type="button" id="btn-tool-anggaran" class="btn-tool">
+        <span>💰</span>
+        <span>Estimasi Biaya</span>
+      </button>
+      <button type="button" id="btn-tool-pdf" class="btn-tool">
+        <span>📄</span>
+        <span>Cetak PDF</span>
+      </button>
+    </div>
+
+    <!-- Hidden Input File Khusus OCR Kamera -->
+    <input type="file" id="input-file-ocr" accept="image/*" capture="environment" style="display:none;">
+
     <form id="form-sarana" class="form-box">
       <h2 class="form-title">Catat Titik Sarana Baru</h2>
 
@@ -68,7 +87,10 @@
 
         <div class="form-group">
           <label for="sisaKwh">Sisa Token (kWh)</label>
-          <input type="number" step="any" id="sisaKwh" placeholder="Contoh: 10542" required>
+          <div class="input-ocr-group">
+            <input type="number" step="any" id="sisaKwh" placeholder="Contoh: 10542" required>
+            <button type="button" id="btn-scan-form" class="btn-ocr-scan" title="Scan Kamera Meteran">📷 OCR</button>
+          </div>
         </div>
       </div>
 
@@ -115,7 +137,10 @@
 
         <div class="form-group">
           <label for="modalKwh">Sisa Token Sekarang (kWh)</label>
-          <input type="number" step="any" id="modalKwh" placeholder="Contoh: 25000" required>
+          <div class="input-ocr-group">
+            <input type="number" step="any" id="modalKwh" placeholder="Contoh: 25000" required>
+            <button type="button" id="btn-scan-modal" class="btn-ocr-scan" title="Scan Kamera">📷 OCR</button>
+          </div>
         </div>
 
         <div class="form-group">
@@ -128,6 +153,20 @@
           <button type="submit" class="btn-submit">Simpan</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal Estimasi Anggaran Biaya Token -->
+  <div id="modal-anggaran" class="modal-backdrop">
+    <div class="modal-konten">
+      <h3 style="margin-bottom: 6px;">Estimasi Anggaran Token</h3>
+      <p style="font-size:0.8rem; color:#94a3b8; margin-bottom:12px;">Perhitungan kebutuhan dana pengisian sarana kritis untuk 30 hari ke depan.</p>
+      
+      <div id="konten-rincian-anggaran"></div>
+
+      <div style="margin-top:16px;">
+        <button type="button" id="btn-tutup-anggaran" class="btn-submit">Tutup</button>
+      </div>
     </div>
   </div>
 
@@ -191,9 +230,9 @@
       <span>📍</span>
       <span>Sarana</span>
     </a>
-    <a href="#" class="nav-item" onclick="alert('Menu berikutnya akan ditambahkan di sini.')">
-      <span>➕</span>
-      <span>Fitur Baru</span>
+    <a href="#" class="nav-item" onclick="alert('Navigasi utama aktif.')">
+      <span>⭐</span>
+      <span>Fitur</span>
     </a>
   </nav>
 

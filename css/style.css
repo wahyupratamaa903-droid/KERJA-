@@ -53,8 +53,37 @@ header p { font-size: 0.8rem; color: var(--text-muted); }
   font-weight: 700;
   border-radius: 8px;
   cursor: pointer;
-  margin-bottom: 18px;
+  margin-bottom: 8px;
   font-size: 0.85rem;
+}
+
+/* Panel Alat Lapangan (Toolbar 3 Tombol) */
+.toolbar-lapangan {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 18px;
+}
+.btn-tool {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: #cbd5e1;
+  padding: 9px 6px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  text-align: center;
+}
+.btn-tool.active-route {
+  background: #1e3a8a;
+  border-color: #3b82f6;
+  color: #60a5fa;
 }
 
 .form-box {
@@ -79,6 +108,24 @@ input, select {
   font-size: 0.9rem;
 }
 input:disabled { opacity: 0.5; background: #0d121c; }
+
+/* Input kWh dengan Tombol Kamera OCR */
+.input-ocr-group {
+  display: flex;
+  gap: 6px;
+}
+.input-ocr-group input { flex: 1; }
+.btn-ocr-scan {
+  background: #1e293b;
+  border: 1px solid var(--border);
+  color: #60a5fa;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
 
 .gps-input-group {
   display: flex;
@@ -160,6 +207,17 @@ input:disabled { opacity: 0.5; background: #0d121c; }
 .kartu-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
 .tipe-sarana { font-size: 0.72rem; color: #60a5fa; font-weight: 700; text-transform: uppercase; }
 .lokasi-sarana { font-size: 1rem; margin-top: 2px; }
+
+.badge-jarak {
+  display: inline-block;
+  background: rgba(37,99,235,0.15);
+  color: #93c5fd;
+  border: 1px solid rgba(59,130,246,0.3);
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-top: 4px;
+}
 
 .tag-status { padding: 4px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; }
 .tag-status.kritis { background: rgba(239,68,68,0.15); color: var(--danger); }
@@ -273,7 +331,9 @@ input:disabled { opacity: 0.5; background: #0d121c; }
   border-radius: var(--radius);
   padding: 18px;
   width: 100%;
-  max-width: 380px;
+  max-width: 400px;
+  max-height: 85vh;
+  overflow-y: auto;
 }
 .modal-foto-isi {
   max-width: 95vw;
