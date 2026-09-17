@@ -77,23 +77,12 @@ btnAmbilGps.addEventListener('click', async () => {
   }
 });
 
-// Tombol Rekap WhatsApp dengan Feedback Loading
-btnEksporWa.addEventListener('click', async () => {
+btnEksporWa.addEventListener('click', () => {
   if (dataSarana.length === 0) {
     alert('Belum ada data sarana untuk dilaporkan.');
     return;
   }
-  const teksAsli = btnEksporWa.textContent;
-  btnEksporWa.disabled = true;
-  btnEksporWa.textContent = 'Menyiapkan Foto & Laporan...';
-  try {
-    await kirimLaporanKeWhatsApp(dataSarana, hitungPrediksiHabis);
-  } catch (err) {
-    console.error(err);
-  } finally {
-    btnEksporWa.disabled = false;
-    btnEksporWa.textContent = teksAsli;
-  }
+  kirimLaporanKeWhatsApp(dataSarana, hitungPrediksiHabis);
 });
 
 function perbaruiStatistik() {
@@ -158,10 +147,14 @@ function renderData() {
     if (info.pesan) {
       blokAnalisa = `<p class="pesan-catatan">${info.pesan}</p>`;
     } else {
+      const teksPemakaian = info.isTopUp 
+        ? `<span style="color:#10b981; font-weight:600;">Status: Diisi Ulang</span>`
+        : `Pemakaian: <strong>${info.totalPakai} kWh</strong> (${info.selisihHari} hr)`;
+
       blokAnalisa = `
         <div class="grid-ringkasan">
-          <div>${info.keteranganPemakaian}</div>
-          <div>Rata-rata: <strong>${info.rataPerHari} kWh/hr</strong></div>
+          <div>${teksPemakaian}</div>
+          <div>Rata-rata: <strong>${info.rataPerHari} kWh/hr</strong> ${info.isTopUp ? '(riwayat)' : ''}</div>
           <div class="sorot-hari">
             Estimasi: <strong>± ${info.estimasiHari} Hari Lagi (${info.tanggalHabis})</strong>
           </div>
@@ -228,7 +221,6 @@ function renderData() {
           Patokan Terakhir: <strong>${terakhir.kwh} kWh</strong> (${terakhir.tanggal})
         </span>
       `;
-      document.getElementById('modalBeliKwh').value = '';
       modalUpdate.style.display = 'flex';
     });
   });
@@ -278,12 +270,12 @@ tabFilters.forEach(tab => {
   });
 });
 
-// Simpan Sarana Baru
+// Simpan Sarana Baru ke Cloud
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const btnSubmit = form.querySelector('button[type="submit"]');
   btnSubmit.disabled = true;
-  btnSubmit.textContent = 'Menyimpan...';
+  btnSubmit.textContent = 'Menyimpan ke Cloud...';
 
   const lokasi = document.getElementById('lokasi').value.trim();
   const tipe = document.getElementById('tipe').value;
@@ -325,7 +317,7 @@ form.addEventListener('submit', async (e) => {
   }
 });
 
-// Simpan Perubahan Edit
+// Simpan Perubahan Edit ke Cloud
 formEdit.addEventListener('submit', async (e) => {
   e.preventDefault();
   if (indexSaranaTerpilih === null) return;
@@ -343,22 +335,16 @@ formEdit.addEventListener('submit', async (e) => {
   renderData();
 });
 
-// Update Catatan Token Baru
+// Simpan Catatan Token Baru ke Cloud
 formUpdate.addEventListener('submit', async (e) => {
   e.preventDefault();
   if (indexSaranaTerpilih === null) return;
 
   const tgl = document.getElementById('modalTanggal').value;
   const kwh = Number(document.getElementById('modalKwh').value);
-  const kwhBeliRaw = document.getElementById('modalBeliKwh').value;
   const sarana = dataSarana[indexSaranaTerpilih];
 
-  const entriBaru = { tanggal: tgl, kwh };
-  if (kwhBeliRaw && Number(kwhBeliRaw) > 0) {
-    entriBaru.kwhBeli = Number(kwhBeliRaw);
-  }
-
-  sarana.riwayatToken.push(entriBaru);
+  sarana.riwayatToken.push({ tanggal: tgl, kwh });
   await simpanSaranaKeCloud(sarana);
   localStorage.setItem('sarana-kerja-v3', JSON.stringify(dataSarana));
 
@@ -386,6 +372,7 @@ async function inisialisasiAplikasi() {
     const dataLokal = JSON.parse(localStorage.getItem('sarana-kerja-v3') || '[]');
 
     if (dataCloud.length === 0 && dataLokal.length > 0) {
+      // Migrasikan 19 data lama dari memori HP ke Firestore Cloud
       await migrasiDataLokalKeCloud(dataLokal);
       dataSarana = dataLokal;
     } else {
