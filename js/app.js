@@ -3,6 +3,12 @@ import { kompresBanyakFoto, inisialisasiPenampilFoto } from './image-handler.js'
 import { dapatkanKoordinatGPS, parsingKoordinatManual } from './gps.js';
 import { filterSarana } from './filter.js';
 import { kirimLaporanKeWhatsApp } from './export-wa.js';
+import { 
+  ambilDataDariCloud, 
+  simpanSaranaKeCloud, 
+  hapusSaranaDariCloud, 
+  migrasiDataLokalKeCloud 
+} from './db.js';
 
 const form = document.getElementById('form-sarana');
 const containerDaftar = document.getElementById('daftar-sarana');
@@ -29,7 +35,7 @@ const editJumlahLampu = document.getElementById('edit-jumlahLampu');
 const inputCari = document.getElementById('input-cari');
 const tabFilters = document.querySelectorAll('.tab-filter');
 
-let dataSarana = JSON.parse(localStorage.getItem('sarana-kerja-v3') || '[]');
+let dataSarana = [];
 let indexSaranaTerpilih = null;
 let statusFilterAktif = 'semua';
 
@@ -37,7 +43,7 @@ const tglHariIni = new Date().toISOString().split('T')[0];
 document.getElementById('tanggalPengecekan').value = tglHariIni;
 document.getElementById('modalTanggal').value = tglHariIni;
 
-// Logika FL vs BL form tambah
+// Logika Lampu
 selectJenisLampu.addEventListener('change', () => {
   if (selectJenisLampu.value === 'FL') {
     inputJumlahLampu.disabled = false;
@@ -48,7 +54,6 @@ selectJenisLampu.addEventListener('change', () => {
   }
 });
 
-// Logika FL vs BL modal edit
 editJenisLampu.addEventListener('change', () => {
   if (editJenisLampu.value === 'FL') {
     editJumlahLampu.disabled = false;
@@ -58,7 +63,6 @@ editJenisLampu.addEventListener('change', () => {
   }
 });
 
-// Ambil GPS otomatis ke kolom koordinat
 btnAmbilGps.addEventListener('click', async () => {
   btnAmbilGps.textContent = 'Mencari...';
   btnAmbilGps.disabled = true;
@@ -73,13 +77,23 @@ btnAmbilGps.addEventListener('click', async () => {
   }
 });
 
-// Tombol Ekspor WhatsApp
-btnEksporWa.addEventListener('click', () => {
+// Tombol Rekap WhatsApp dengan Feedback Loading
+btnEksporWa.addEventListener('click', async () => {
   if (dataSarana.length === 0) {
     alert('Belum ada data sarana untuk dilaporkan.');
     return;
   }
-  kirimLaporanKeWhatsApp(dataSarana, hitungPrediksiHabis);
+  const teksAsli = btnEksporWa.textContent;
+  btnEksporWa.disabled = true;
+  btnEksporWa.textContent = 'Menyiapkan Foto & Laporan...';
+  try {
+    await kirimLaporanKeWhatsApp(dataSarana, hitungPrediksiHabis);
+  } catch (err) {
+    console.error(err);
+  } finally {
+    btnEksporWa.disabled = false;
+    btnEksporWa.textContent = teksAsli;
+  }
 });
 
 function perbaruiStatistik() {
@@ -103,7 +117,7 @@ function renderData() {
     containerDaftar.innerHTML = `
       <div class="state-kosong">
         <p>Tidak ada data sarana yang cocok.</p>
-        <small>Ubah kata kunci pencarian atau tab filter.</small>
+        <small>Data tersinkron aman dengan Cloud Firestore.</small>
       </div>
     `;
     return;
@@ -144,14 +158,10 @@ function renderData() {
     if (info.pesan) {
       blokAnalisa = `<p class="pesan-catatan">${info.pesan}</p>`;
     } else {
-      const teksPemakaian = info.isTopUp 
-        ? `<span style="color:#10b981; font-weight:600;">Status: Diisi Ulang</span>`
-        : `Pemakaian: <strong>${info.totalPakai} kWh</strong> (${info.selisihHari} hr)`;
-
       blokAnalisa = `
         <div class="grid-ringkasan">
-          <div>${teksPemakaian}</div>
-          <div>Rata-rata: <strong>${info.rataPerHari} kWh/hr</strong> ${info.isTopUp ? '(riwayat)' : ''}</div>
+          <div>${info.keteranganPemakaian}</div>
+          <div>Rata-rata: <strong>${info.rataPerHari} kWh/hr</strong></div>
           <div class="sorot-hari">
             Estimasi: <strong>± ${info.estimasiHari} Hari Lagi (${info.tanggalHabis})</strong>
           </div>
@@ -205,7 +215,6 @@ function renderData() {
     containerDaftar.appendChild(kartu);
   });
 
-  // Pasang Event Modal Update
   document.querySelectorAll('.btn-update').forEach(btn => {
     btn.addEventListener('click', (e) => {
       indexSaranaTerpilih = Number(e.target.getAttribute('data-index'));
@@ -219,11 +228,11 @@ function renderData() {
           Patokan Terakhir: <strong>${terakhir.kwh} kWh</strong> (${terakhir.tanggal})
         </span>
       `;
+      document.getElementById('modalBeliKwh').value = '';
       modalUpdate.style.display = 'flex';
     });
   });
 
-  // Pasang Event Modal Edit
   document.querySelectorAll('.btn-edit').forEach(btn => {
     btn.addEventListener('click', (e) => {
       indexSaranaTerpilih = Number(e.target.getAttribute('data-index'));
@@ -245,11 +254,12 @@ function renderData() {
     });
   });
 
-  // Event Hapus
   document.querySelectorAll('.btn-hapus').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', async (e) => {
       const idx = Number(e.target.getAttribute('data-index'));
-      if (confirm('Hapus sarana ini beserta seluruh riwayatnya?')) {
+      const targetSarana = dataSarana[idx];
+      if (confirm(`Hapus sarana "${targetSarana.lokasi}" dari cloud database?`)) {
+        await hapusSaranaDariCloud(targetSarana.id);
         dataSarana.splice(idx, 1);
         localStorage.setItem('sarana-kerja-v3', JSON.stringify(dataSarana));
         renderData();
@@ -258,7 +268,6 @@ function renderData() {
   });
 }
 
-// Event Pencarian & Filter
 inputCari.addEventListener('input', () => renderData());
 tabFilters.forEach(tab => {
   tab.addEventListener('click', () => {
@@ -269,7 +278,7 @@ tabFilters.forEach(tab => {
   });
 });
 
-// Simpan Form Sarana Baru
+// Simpan Sarana Baru
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const btnSubmit = form.querySelector('button[type="submit"]');
@@ -289,7 +298,7 @@ form.addEventListener('submit', async (e) => {
     fotos = await kompresBanyakFoto(inputFoto.files);
   }
 
-  dataSarana.unshift({
+  const saranaBaru = {
     id: Date.now(),
     lokasi,
     tipe,
@@ -298,48 +307,59 @@ form.addEventListener('submit', async (e) => {
     koordinat,
     fotos,
     riwayatToken: [{ tanggal, kwh }]
-  });
+  };
 
-  localStorage.setItem('sarana-kerja-v3', JSON.stringify(dataSarana));
-  form.reset();
-  document.getElementById('tanggalPengecekan').value = tglHariIni;
-  inputJumlahLampu.disabled = false;
-  btnSubmit.disabled = false;
-  btnSubmit.textContent = 'Simpan Sarana';
-  renderData();
+  try {
+    await simpanSaranaKeCloud(saranaBaru);
+    dataSarana.unshift(saranaBaru);
+    localStorage.setItem('sarana-kerja-v3', JSON.stringify(dataSarana));
+    form.reset();
+    document.getElementById('tanggalPengecekan').value = tglHariIni;
+    inputJumlahLampu.disabled = false;
+    renderData();
+  } catch (err) {
+    alert('Gagal simpan ke cloud: ' + err.message);
+  } finally {
+    btnSubmit.disabled = false;
+    btnSubmit.textContent = 'Simpan Sarana';
+  }
 });
 
-// Simpan Perubahan Edit Sarana
-formEdit.addEventListener('submit', (e) => {
+// Simpan Perubahan Edit
+formEdit.addEventListener('submit', async (e) => {
   e.preventDefault();
   if (indexSaranaTerpilih === null) return;
 
-  const lokasi = document.getElementById('edit-lokasi').value.trim();
-  const tipe = document.getElementById('edit-tipe').value;
-  const jenisLampu = editJenisLampu.value;
-  const jumlahLampu = jenisLampu === 'FL' ? Number(editJumlahLampu.value) : 0;
-  const koordinat = parsingKoordinatManual(document.getElementById('edit-koordinat').value);
+  const sarana = dataSarana[indexSaranaTerpilih];
+  sarana.lokasi = document.getElementById('edit-lokasi').value.trim();
+  sarana.tipe = document.getElementById('edit-tipe').value;
+  sarana.jenisLampu = editJenisLampu.value;
+  sarana.jumlahLampu = sarana.jenisLampu === 'FL' ? Number(editJumlahLampu.value) : 0;
+  sarana.koordinat = parsingKoordinatManual(document.getElementById('edit-koordinat').value);
 
-  dataSarana[indexSaranaTerpilih].lokasi = lokasi;
-  dataSarana[indexSaranaTerpilih].tipe = tipe;
-  dataSarana[indexSaranaTerpilih].jenisLampu = jenisLampu;
-  dataSarana[indexSaranaTerpilih].jumlahLampu = jumlahLampu;
-  dataSarana[indexSaranaTerpilih].koordinat = koordinat;
-
+  await simpanSaranaKeCloud(sarana);
   localStorage.setItem('sarana-kerja-v3', JSON.stringify(dataSarana));
   modalEdit.style.display = 'none';
   renderData();
 });
 
 // Update Catatan Token Baru
-formUpdate.addEventListener('submit', (e) => {
+formUpdate.addEventListener('submit', async (e) => {
   e.preventDefault();
   if (indexSaranaTerpilih === null) return;
 
   const tgl = document.getElementById('modalTanggal').value;
   const kwh = Number(document.getElementById('modalKwh').value);
+  const kwhBeliRaw = document.getElementById('modalBeliKwh').value;
+  const sarana = dataSarana[indexSaranaTerpilih];
 
-  dataSarana[indexSaranaTerpilih].riwayatToken.push({ tanggal: tgl, kwh });
+  const entriBaru = { tanggal: tgl, kwh };
+  if (kwhBeliRaw && Number(kwhBeliRaw) > 0) {
+    entriBaru.kwhBeli = Number(kwhBeliRaw);
+  }
+
+  sarana.riwayatToken.push(entriBaru);
+  await simpanSaranaKeCloud(sarana);
   localStorage.setItem('sarana-kerja-v3', JSON.stringify(dataSarana));
 
   formUpdate.reset();
@@ -351,5 +371,32 @@ formUpdate.addEventListener('submit', (e) => {
 btnTutupModal.addEventListener('click', () => { modalUpdate.style.display = 'none'; });
 btnTutupEdit.addEventListener('click', () => { modalEdit.style.display = 'none'; });
 
-inisialisasiPenampilFoto();
-renderData();
+// Inisialisasi Sinkronisasi Database
+async function inisialisasiAplikasi() {
+  inisialisasiPenampilFoto();
+
+  containerDaftar.innerHTML = `
+    <div class="state-kosong">
+      <p>Menghubungkan ke Cloud Firestore...</p>
+    </div>
+  `;
+
+  try {
+    const dataCloud = await ambilDataDariCloud();
+    const dataLokal = JSON.parse(localStorage.getItem('sarana-kerja-v3') || '[]');
+
+    if (dataCloud.length === 0 && dataLokal.length > 0) {
+      await migrasiDataLokalKeCloud(dataLokal);
+      dataSarana = dataLokal;
+    } else {
+      dataSarana = dataCloud.length > 0 ? dataCloud : dataLokal;
+    }
+  } catch (e) {
+    console.warn('Mode offline/lokal aktif:', e);
+    dataSarana = JSON.parse(localStorage.getItem('sarana-kerja-v3') || '[]');
+  }
+
+  renderData();
+}
+
+inisialisasiAplikasi();
