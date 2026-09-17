@@ -3,8 +3,13 @@ import { kompresBanyakFoto, inisialisasiPenampilFoto } from './image-handler.js'
 import { dapatkanKoordinatGPS, parsingKoordinatManual } from './gps.js';
 import { filterSarana } from './filter.js';
 import { kirimLaporanKeWhatsApp } from './export-wa.js';
+import { 
+  ambilDataDariCloud, 
+  simpanSaranaKeCloud, 
+  hapusSaranaDariCloud, 
+  migrasiDataLokalKeCloud 
+} from './db.js';
 
-// Elemen Antarmuka
 const form = document.getElementById('form-sarana');
 const containerDaftar = document.getElementById('daftar-sarana');
 const selectJenisLampu = document.getElementById('jenisLampu');
@@ -14,16 +19,19 @@ const inputKoordinat = document.getElementById('input-koordinat');
 const btnAmbilGps = document.getElementById('btn-ambil-gps');
 const btnEksporWa = document.getElementById('btn-ekspor-wa');
 
+// Modal Update Token
 const modalUpdate = document.getElementById('modal-update');
 const formUpdate = document.getElementById('form-update');
 const btnTutupModal = document.getElementById('btn-tutup-modal');
 
+// Modal Edit Sarana
 const modalEdit = document.getElementById('modal-edit');
 const formEdit = document.getElementById('form-edit');
 const btnTutupEdit = document.getElementById('btn-tutup-edit');
 const editJenisLampu = document.getElementById('edit-jenisLampu');
 const editJumlahLampu = document.getElementById('edit-jumlahLampu');
 
+// Pencarian & Filter
 const inputCari = document.getElementById('input-cari');
 const tabFilters = document.querySelectorAll('.tab-filter');
 
@@ -69,6 +77,7 @@ btnAmbilGps.addEventListener('click', async () => {
   }
 });
 
+// Tombol Rekap WhatsApp dengan Feedback Loading
 btnEksporWa.addEventListener('click', async () => {
   if (dataSarana.length === 0) {
     alert('Belum ada data sarana untuk dilaporkan.');
@@ -76,7 +85,7 @@ btnEksporWa.addEventListener('click', async () => {
   }
   const teksAsli = btnEksporWa.textContent;
   btnEksporWa.disabled = true;
-  btnEksporWa.textContent = 'Menyiapkan Laporan...';
+  btnEksporWa.textContent = 'Menyiapkan Foto & Laporan...';
   try {
     await kirimLaporanKeWhatsApp(dataSarana, hitungPrediksiHabis);
   } catch (err) {
@@ -86,27 +95,6 @@ btnEksporWa.addEventListener('click', async () => {
     btnEksporWa.textContent = teksAsli;
   }
 });
-
-// Fitur Unduh Cadangan Fisik (Anti Hilang)
-function buatTombolCadangan() {
-  if (document.getElementById('btn-cadang-file')) return;
-  const btn = document.createElement('button');
-  btn.id = 'btn-cadang-file';
-  btn.textContent = '📥 Unduh Cadangan Data (File JSON)';
-  btn.style.cssText = 'width:100%; padding:9px; background:#1e293b; color:#94a3b8; border:1px solid #334155; border-radius:8px; font-size:0.75rem; margin-bottom:14px; cursor:pointer; font-weight:600;';
-  btn.addEventListener('click', () => {
-    if (dataSarana.length === 0) {
-      alert('Belum ada data untuk diunduh.');
-      return;
-    }
-    const blob = new Blob([JSON.stringify(dataSarana, null, 2)], { type: 'application/json' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `cadangan_sarana_${tglHariIni}.json`;
-    link.click();
-  });
-  btnEksporWa.insertAdjacentElement('afterend', btn);
-}
 
 function perbaruiStatistik() {
   const total = dataSarana.length;
@@ -122,15 +110,14 @@ function perbaruiStatistik() {
 function renderData() {
   containerDaftar.innerHTML = '';
   perbaruiStatistik();
-  buatTombolCadangan();
 
   const dataTersaring = filterSarana(dataSarana, inputCari.value, statusFilterAktif, hitungPrediksiHabis);
 
   if (dataTersaring.length === 0) {
     containerDaftar.innerHTML = `
       <div class="state-kosong">
-        <p>Tidak ada titik sarana yang cocok.</p>
-        <small>Penyimpanan lokal terlindungi secara mandiri.</small>
+        <p>Tidak ada data sarana yang cocok.</p>
+        <small>Data tersinkron aman dengan Cloud Firestore.</small>
       </div>
     `;
     return;
@@ -268,10 +255,11 @@ function renderData() {
   });
 
   document.querySelectorAll('.btn-hapus').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', async (e) => {
       const idx = Number(e.target.getAttribute('data-index'));
       const targetSarana = dataSarana[idx];
-      if (confirm(`Hapus sarana "${targetSarana.lokasi}"?`)) {
+      if (confirm(`Hapus sarana "${targetSarana.lokasi}" dari cloud database?`)) {
+        await hapusSaranaDariCloud(targetSarana.id);
         dataSarana.splice(idx, 1);
         localStorage.setItem('sarana-kerja-v3', JSON.stringify(dataSarana));
         renderData();
@@ -290,6 +278,7 @@ tabFilters.forEach(tab => {
   });
 });
 
+// Simpan Sarana Baru
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const btnSubmit = form.querySelector('button[type="submit"]');
@@ -320,18 +309,24 @@ form.addEventListener('submit', async (e) => {
     riwayatToken: [{ tanggal, kwh }]
   };
 
-  dataSarana.unshift(saranaBaru);
-  localStorage.setItem('sarana-kerja-v3', JSON.stringify(dataSarana));
-
-  form.reset();
-  document.getElementById('tanggalPengecekan').value = tglHariIni;
-  inputJumlahLampu.disabled = false;
-  btnSubmit.disabled = false;
-  btnSubmit.textContent = 'Simpan Sarana';
-  renderData();
+  try {
+    await simpanSaranaKeCloud(saranaBaru);
+    dataSarana.unshift(saranaBaru);
+    localStorage.setItem('sarana-kerja-v3', JSON.stringify(dataSarana));
+    form.reset();
+    document.getElementById('tanggalPengecekan').value = tglHariIni;
+    inputJumlahLampu.disabled = false;
+    renderData();
+  } catch (err) {
+    alert('Gagal simpan ke cloud: ' + err.message);
+  } finally {
+    btnSubmit.disabled = false;
+    btnSubmit.textContent = 'Simpan Sarana';
+  }
 });
 
-formEdit.addEventListener('submit', (e) => {
+// Simpan Perubahan Edit
+formEdit.addEventListener('submit', async (e) => {
   e.preventDefault();
   if (indexSaranaTerpilih === null) return;
 
@@ -342,12 +337,14 @@ formEdit.addEventListener('submit', (e) => {
   sarana.jumlahLampu = sarana.jenisLampu === 'FL' ? Number(editJumlahLampu.value) : 0;
   sarana.koordinat = parsingKoordinatManual(document.getElementById('edit-koordinat').value);
 
+  await simpanSaranaKeCloud(sarana);
   localStorage.setItem('sarana-kerja-v3', JSON.stringify(dataSarana));
   modalEdit.style.display = 'none';
   renderData();
 });
 
-formUpdate.addEventListener('submit', (e) => {
+// Update Catatan Token Baru
+formUpdate.addEventListener('submit', async (e) => {
   e.preventDefault();
   if (indexSaranaTerpilih === null) return;
 
@@ -362,6 +359,7 @@ formUpdate.addEventListener('submit', (e) => {
   }
 
   sarana.riwayatToken.push(entriBaru);
+  await simpanSaranaKeCloud(sarana);
   localStorage.setItem('sarana-kerja-v3', JSON.stringify(dataSarana));
 
   formUpdate.reset();
@@ -373,46 +371,31 @@ formUpdate.addEventListener('submit', (e) => {
 btnTutupModal.addEventListener('click', () => { modalUpdate.style.display = 'none'; });
 btnTutupEdit.addEventListener('click', () => { modalEdit.style.display = 'none'; });
 
-// Fungsi Penyelamat: Menyisir seluruh memori browser tanpa kecuali
-function pulihkanDataSemuaKunci() {
-  let hasil = [];
-
-  // 1. Cek semua riwayat kunci nama yang pernah dipakai
-  const daftarKunci = ['sarana-kerja-v3', 'sarana-kerja-v2', 'sarana-kerja', 'data-sarana'];
-  for (const k of daftarKunci) {
-    try {
-      const data = JSON.parse(localStorage.getItem(k) || '[]');
-      if (Array.isArray(data) && data.length > hasil.length) {
-        hasil = data;
-      }
-    } catch (e) {}
-  }
-
-  // 2. Jika masih kosong, periksa seluruh isi penyimpanan browser
-  if (hasil.length === 0) {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      try {
-        const val = JSON.parse(localStorage.getItem(key));
-        if (Array.isArray(val) && val.length > 0 && (val[0].lokasi || val[0].riwayatToken)) {
-          if (val.length > hasil.length) {
-            hasil = val;
-          }
-        }
-      } catch (e) {}
-    }
-  }
-
-  // Amankan data yang ditemukan ke kunci permanen
-  if (hasil.length > 0) {
-    localStorage.setItem('sarana-kerja-v3', JSON.stringify(hasil));
-  }
-  return hasil;
-}
-
-function inisialisasiAplikasi() {
+// Inisialisasi Sinkronisasi Database
+async function inisialisasiAplikasi() {
   inisialisasiPenampilFoto();
-  dataSarana = pulihkanDataSemuaKunci();
+
+  containerDaftar.innerHTML = `
+    <div class="state-kosong">
+      <p>Menghubungkan ke Cloud Firestore...</p>
+    </div>
+  `;
+
+  try {
+    const dataCloud = await ambilDataDariCloud();
+    const dataLokal = JSON.parse(localStorage.getItem('sarana-kerja-v3') || '[]');
+
+    if (dataCloud.length === 0 && dataLokal.length > 0) {
+      await migrasiDataLokalKeCloud(dataLokal);
+      dataSarana = dataLokal;
+    } else {
+      dataSarana = dataCloud.length > 0 ? dataCloud : dataLokal;
+    }
+  } catch (e) {
+    console.warn('Mode offline/lokal aktif:', e);
+    dataSarana = JSON.parse(localStorage.getItem('sarana-kerja-v3') || '[]');
+  }
+
   renderData();
 }
 
