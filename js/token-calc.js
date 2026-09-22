@@ -1,4 +1,4 @@
-// js/token-calc.js - Prediksi akurat & perlindungan status isi ulang
+// js/token-calc.js - Perhitungan murni matematis tanpa angka palsu
 
 function parseTgl(str) {
   if (!str) return new Date();
@@ -14,7 +14,7 @@ export function hitungPrediksiHabis(riwayat) {
     return { status: 'baru', pesan: 'Belum ada data token' };
   }
 
-  // Urutkan dari catatan terlama ke terbaru
+  // Urutkan riwayat dari terlama ke terbaru
   const urut = [...riwayat].sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
   const terakhir = urut[urut.length - 1];
 
@@ -23,7 +23,7 @@ export function hitungPrediksiHabis(riwayat) {
       status: 'baru',
       terakhir: { kwh: terakhir.kwh, tanggal: terakhir.tanggal },
       sebelumnya: null,
-      pesan: 'Data awal tercatat. Masukkan catatan berikutnya untuk mengukur konsumsi.'
+      pesan: 'Data awal tercatat. Tambah catatan berikutnya untuk mengukur konsumsi.'
     };
   }
 
@@ -35,37 +35,40 @@ export function hitungPrediksiHabis(riwayat) {
 
   let rataPerHari = 0;
   let isTopUp = false;
+  let isAnomali = false;
   let keteranganPemakaian = '';
 
-  // Angka bertambah atau sama = DIISI ULANG
   if (selisihKwh <= 0) {
+    // KONDISI DIISI ULANG
     isTopUp = true;
     keteranganPemakaian = 'Status: Diisi Ulang';
 
-    // Cari laju konsumsi normal dari riwayat sebelumnya yang pernah berkurang
+    // Cari laju konsumsi normal dari siklus sebelumnya yang pernah berkurang
     for (let i = urut.length - 2; i > 0; i--) {
       const itemA = urut[i - 1];
       const itemB = urut[i];
       if (itemA.kwh > itemB.kwh) {
         const durasi = Math.max(1, Math.round((parseTgl(itemB.tanggal) - parseTgl(itemA.tanggal)) / (1000 * 60 * 60 * 24)));
         const laju = (itemA.kwh - itemB.kwh) / durasi;
-        if (laju > 0 && laju < 1500) {
+        if (laju > 0 && laju < 3000) {
           rataPerHari = laju;
           break;
         }
       }
     }
-    // Nilai default konsumsi lampu reklame jika belum ada riwayat turun
-    if (rataPerHari <= 0) rataPerHari = 250;
+    if (rataPerHari <= 0) rataPerHari = 50; // Konsumsi wajar reklame
   } else {
-    // Konsumsi normal (angka berkurang)
+    // KONSUMSI NORMAL (MURNI TANPA BATASAN PALSU)
     rataPerHari = selisihKwh / selisihHari;
-    // Proteksi batas wajar konsumsi harian reklame
-    if (rataPerHari > 3000) rataPerHari = 300;
     keteranganPemakaian = `Pemakaian: ${selisihKwh.toFixed(1)} kWh (${selisihHari} hr)`;
+
+    // Deteksi jika pemakaian melebihi 5.000 kWh/hari (pasti salah ketik angka meteran)
+    if (rataPerHari > 5000) {
+      isAnomali = true;
+    }
   }
 
-  const estimasiHari = Math.floor(terakhir.kwh / Math.max(1, rataPerHari));
+  const estimasiHari = Math.floor(terakhir.kwh / Math.max(0.1, rataPerHari));
 
   const tglHabisObj = parseTgl(terakhir.tanggal);
   tglHabisObj.setDate(tglHabisObj.getDate() + estimasiHari);
@@ -75,17 +78,13 @@ export function hitungPrediksiHabis(riwayat) {
     year: 'numeric'
   });
 
-  // Tentukan status: Kritis jika sisa token < 1.500 atau habis <= 3 hari
   let status = 'aman';
-  if (terakhir.kwh < 3000 || estimasiHari <= 7) {
-    if (terakhir.kwh < 1500 || estimasiHari <= 3) {
-      status = 'kritis';
-    } else {
-      status = 'waspada';
-    }
+  if (isAnomali) {
+    status = 'kritis';
+  } else if (terakhir.kwh < 3000 || estimasiHari <= 7) {
+    status = (terakhir.kwh < 1500 || estimasiHari <= 3) ? 'kritis' : 'waspada';
   }
 
-  // Token yang baru diisi ulang dan saldonya di atas 3.000 kWh otomatis berstatus AMAN
   if (isTopUp && terakhir.kwh >= 3000) {
     status = 'aman';
   }
@@ -93,6 +92,7 @@ export function hitungPrediksiHabis(riwayat) {
   return {
     status,
     isTopUp,
+    isAnomali,
     terakhir: { kwh: terakhir.kwh, tanggal: terakhir.tanggal },
     sebelumnya: { kwh: sebelum.kwh, tanggal: sebelum.tanggal },
     selisihHari,

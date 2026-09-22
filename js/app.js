@@ -28,7 +28,7 @@ const btnScanForm = document.getElementById('btn-scan-form');
 const btnScanModal = document.getElementById('btn-scan-modal');
 let targetInputOcr = null;
 
-// Modal Update Token
+// Modal Update
 const modalUpdate = document.getElementById('modal-update');
 const formUpdate = document.getElementById('form-update');
 const btnTutupModal = document.getElementById('btn-tutup-modal');
@@ -59,7 +59,6 @@ const tglHariIni = new Date().toISOString().split('T')[0];
 document.getElementById('tanggalPengecekan').value = tglHariIni;
 document.getElementById('modalTanggal').value = tglHariIni;
 
-// Logika Lampu
 selectJenisLampu.addEventListener('change', () => {
   if (selectJenisLampu.value === 'FL') {
     inputJumlahLampu.disabled = false;
@@ -93,7 +92,6 @@ btnAmbilGps.addEventListener('click', async () => {
   }
 });
 
-// Fitur Rute Patroli
 btnToolRute.addEventListener('click', async () => {
   if (modeRuteAktif) {
     modeRuteAktif = false;
@@ -115,7 +113,6 @@ btnToolRute.addEventListener('click', async () => {
   }
 });
 
-// Fitur Estimasi Anggaran (Realistis)
 btnToolAnggaran.addEventListener('click', () => {
   const hasil = hitungEstimasiBiaya(dataSarana, hitungPrediksiHabis);
 
@@ -147,11 +144,8 @@ btnToolAnggaran.addEventListener('click', () => {
   modalAnggaran.style.display = 'flex';
 });
 
-btnTutupAnggaran.addEventListener('click', () => {
-  modalAnggaran.style.display = 'none';
-});
+btnTutupAnggaran.addEventListener('click', () => { modalAnggaran.style.display = 'none'; });
 
-// Cetak PDF
 btnToolPdf.addEventListener('click', () => {
   if (dataSarana.length === 0) {
     alert('Belum ada data untuk dicetak.');
@@ -161,7 +155,6 @@ btnToolPdf.addEventListener('click', () => {
   cetakDokumenPdfResmi(dataSarana, hitungPrediksiHabis, hasilAnggaran);
 });
 
-// Scan OCR
 btnScanForm.addEventListener('click', () => {
   targetInputOcr = document.getElementById('sisaKwh');
   inputFileOcr.click();
@@ -195,7 +188,6 @@ inputFileOcr.addEventListener('change', async (e) => {
   }
 });
 
-// WhatsApp Share
 btnEksporWa.addEventListener('click', async () => {
   if (dataSarana.length === 0) {
     alert('Belum ada data sarana untuk dilaporkan.');
@@ -262,7 +254,6 @@ function renderData() {
       infoJarakHtml = `<span class="badge-jarak">📍 ± ${jarak.toFixed(2)} km dari posisi Anda</span>`;
     }
 
-    // Blok Sisa Terakhir & Sebelumnya
     let blokRiwayat = `
       <div class="baris-riwayat">
         <div class="item-riwayat">
@@ -283,19 +274,19 @@ function renderData() {
     }
     blokRiwayat += `</div>`;
 
-    // Susun Riwayat Lengkap Setiap Tanggal
+    // Panel Riwayat dengan Tombol Hapus Spesifik
     const riwayatUrutTerbalik = [...item.riwayatToken].sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
     const barisHistoriHtml = riwayatUrutTerbalik.map((h) => `
-      <div class="baris-histori-item">
-        <span>📅 ${h.tanggal}</span>
-        <strong>${h.kwh.toLocaleString('id-ID')} kWh</strong>
+      <div class="baris-histori-item" style="display:flex; justify-content:space-between; align-items:center; padding:3px 0;">
+        <span>📅 ${h.tanggal}: <strong>${h.kwh.toLocaleString('id-ID')} kWh</strong></span>
+        ${item.riwayatToken.length > 1 ? `<button class="btn-hapus-entri" data-sarana-id="${item.id}" data-tgl="${h.tanggal}" data-kwh="${h.kwh}" style="background:transparent; border:none; color:#ef4444; cursor:pointer; font-size:0.8rem; padding:0 4px;" title="Hapus catatan salah ini">✕</button>` : ''}
       </div>
     `).join('');
 
     const blokHistoriLengkap = `
-      <details class="panel-histori-token">
-        <summary>Riwayat Pencatatan (${item.riwayatToken.length} Riwayat)</summary>
-        <div class="daftar-histori-box">
+      <details class="panel-histori-token" open>
+        <summary style="cursor:pointer; color:#60a5fa; font-weight:600;">Riwayat Pencatatan (${item.riwayatToken.length} Catatan)</summary>
+        <div class="daftar-histori-box" style="margin-top:6px; border-top:1px dashed #334155; padding-top:4px;">
           ${barisHistoriHtml}
         </div>
       </details>
@@ -304,6 +295,14 @@ function renderData() {
     let blokAnalisa = '';
     if (info.pesan) {
       blokAnalisa = `<p class="pesan-catatan">${info.pesan}</p>`;
+    } else if (info.isAnomali) {
+      blokAnalisa = `
+        <div class="grid-ringkasan" style="border:1px solid #ef4444; background:rgba(239,68,68,0.1);">
+          <div style="color:#ef4444; font-weight:700;">⚠️ TERDETEKSI SALAH KETIK ANGKA:</div>
+          <div>${info.keteranganPemakaian}</div>
+          <div style="font-size:0.75rem; color:#cbd5e1;">Laju ${info.rataPerHari} kWh/hr tidak realistis untuk ${item.tipe}. Hapus riwayat tanggal yang salah menggunakan tombol ✕ di atas.</div>
+        </div>
+      `;
     } else {
       blokAnalisa = `
         <div class="grid-ringkasan">
@@ -342,7 +341,7 @@ function renderData() {
           ${infoJarakHtml}
         </div>
         <span class="tag-status ${info.status}">
-          ${info.isTopUp ? 'DIISI ULANG' : info.status === 'kritis' ? 'PERLU DIISI' : info.status === 'waspada' ? 'WASPADA' : info.status === 'aman' ? 'AMAN' : 'AKTIF'}
+          ${info.isAnomali ? 'SALAH INPUT' : info.isTopUp ? 'DIISI ULANG' : info.status === 'kritis' ? 'PERLU DIISI' : info.status === 'waspada' ? 'WASPADA' : info.status === 'aman' ? 'AMAN' : 'AKTIF'}
         </span>
       </div>
 
@@ -362,6 +361,28 @@ function renderData() {
     `;
 
     containerDaftar.appendChild(kartu);
+  });
+
+  // Tombol Hapus Entri Riwayat Tunggal (Untuk koreksi salah ketik)
+  document.querySelectorAll('.btn-hapus-entri').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const sId = Number(btn.getAttribute('data-sarana-id'));
+      const tgl = btn.getAttribute('data-tgl');
+      const kwh = Number(btn.getAttribute('data-kwh'));
+
+      const sarana = dataSarana.find(s => s.id === sId);
+      if (!sarana) return;
+
+      if (confirm(`Hapus catatan salah ini (${tgl} - ${kwh} kWh)?`)) {
+        const idxEntri = sarana.riwayatToken.findIndex(r => r.tanggal === tgl && Number(r.kwh) === kwh);
+        if (idxEntri !== -1) {
+          sarana.riwayatToken.splice(idxEntri, 1);
+          localStorage.setItem('sarana-kerja-v3', JSON.stringify(dataSarana));
+          renderData();
+        }
+      }
+    });
   });
 
   document.querySelectorAll('.btn-update').forEach(btn => {
@@ -482,7 +503,6 @@ formEdit.addEventListener('submit', (e) => {
   renderData();
 });
 
-// Update Catatan Token Baru
 formUpdate.addEventListener('submit', (e) => {
   e.preventDefault();
   if (indexSaranaTerpilih === null) return;
