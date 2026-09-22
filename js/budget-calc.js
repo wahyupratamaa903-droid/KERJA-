@@ -1,19 +1,14 @@
-// js/budget-calc.js - Estimasi anggaran pembelian token listrik PLN
+// js/budget-calc.js - Estimasi anggaran pembelian token PLN (standar kantor Rp500.000/titik)
 
-export function hitungEstimasiBiaya(daftarSarana, fungsiHitung, tarifPerKwh = 1500) {
+export function hitungEstimasiBiaya(daftarSarana, fungsiHitung) {
   const saranaKritis = [];
-  let totalKwhDibutuhkan = 0;
   let totalEstimasiBiaya = 0;
 
   daftarSarana.forEach(sarana => {
     const info = fungsiHitung(sarana.riwayatToken);
+    // Hanya sarana yang benar-benar mendekati habis (kritis / waspada)
     if (info.status === 'kritis' || info.status === 'waspada') {
-      const rataHarian = parseFloat(info.rataPerHari) || 50;
-      // Target isi ulang untuk cadangan 30 hari ke depan
-      const kebutuhanKwh = Math.max(50, Math.round((rataHarian * 30) - info.terakhir.kwh));
-      const estimasiRp = Math.ceil((kebutuhanKwh * tarifPerKwh) / 50000) * 50000; // Pembulatan kelipatan nominal PLN 50rb
-
-      totalKwhDibutuhkan += kebutuhanKwh;
+      const estimasiRp = 500000; // Paket nominal token operasional standar
       totalEstimasiBiaya += estimasiRp;
 
       saranaKritis.push({
@@ -22,7 +17,6 @@ export function hitungEstimasiBiaya(daftarSarana, fungsiHitung, tarifPerKwh = 15
         sisaKwh: info.terakhir.kwh,
         estimasiHari: info.estimasiHari,
         tanggalHabis: info.tanggalHabis,
-        kebutuhanKwh,
         estimasiRp
       });
     }
@@ -30,8 +24,6 @@ export function hitungEstimasiBiaya(daftarSarana, fungsiHitung, tarifPerKwh = 15
 
   return {
     saranaKritis,
-    totalKwhDibutuhkan,
-    totalEstimasiBiaya,
-    tarifPerKwh
+    totalEstimasiBiaya
   };
 }

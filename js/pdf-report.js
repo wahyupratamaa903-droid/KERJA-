@@ -1,4 +1,4 @@
-// js/pdf-report.js - Pembuat dokumen cetak resmi PDF profesional
+// js/pdf-report.js - Laporan resmi PDF dengan estimasi anggaran standar
 
 export function cetakDokumenPdfResmi(daftarSarana, fungsiHitung, dataAnggaran) {
   const tglCetak = new Date().toLocaleDateString('id-ID', {
@@ -7,26 +7,23 @@ export function cetakDokumenPdfResmi(daftarSarana, fungsiHitung, dataAnggaran) {
     year: 'numeric'
   });
 
-  // Susun baris tabel prioritas pengisian token
   let barisPrioritas = '';
   if (dataAnggaran.saranaKritis.length === 0) {
-    barisPrioritas = `<tr><td colspan="6" style="text-align:center; padding:10px; color:#10b981;">Semua titik sarana dalam kondisi aman. Tidak ada kebutuhan mendesak.</td></tr>`;
+    barisPrioritas = `<tr><td colspan="5" style="text-align:center; padding:10px; color:#10b981;">Semua titik sarana dalam kondisi aman.</td></tr>`;
   } else {
     dataAnggaran.saranaKritis.forEach((item, idx) => {
       barisPrioritas += `
         <tr>
           <td style="text-align:center;">${idx + 1}</td>
           <td><strong>${item.lokasi}</strong> (${item.tipe})</td>
-          <td style="text-align:right;">${item.sisaKwh} kWh</td>
-          <td style="text-align:center; color:#b91c1c; font-weight:bold;">${item.estimasiHari} hari (${item.tanggalHabis})</td>
-          <td style="text-align:right;">${item.kebutuhanKwh} kWh</td>
+          <td style="text-align:right;">${item.sisaKwh.toLocaleString('id-ID')} kWh</td>
+          <td style="text-align:center; color:#b91c1c; font-weight:bold;">±${item.estimasiHari} hari (${item.tanggalHabis})</td>
           <td style="text-align:right; font-weight:bold;">Rp ${item.estimasiRp.toLocaleString('id-ID')}</td>
         </tr>
       `;
     });
   }
 
-  // Susun baris tabel inventaris lengkap
   let barisInventaris = '';
   daftarSarana.forEach((item, idx) => {
     const info = fungsiHitung(item.riwayatToken);
@@ -38,14 +35,13 @@ export function cetakDokumenPdfResmi(daftarSarana, fungsiHitung, dataAnggaran) {
         <td style="text-align:center;">${idx + 1}</td>
         <td><strong>${item.lokasi}</strong></td>
         <td>${item.tipe} / ${item.jenisLampu || '-'}</td>
-        <td style="text-align:right;">${info.terakhir.kwh} kWh</td>
+        <td style="text-align:right;">${info.terakhir.kwh.toLocaleString('id-ID')} kWh</td>
         <td style="text-align:center;">${info.estimasiHari ? info.estimasiHari + ' hari' : '-'}</td>
         <td style="text-align:center; font-weight:bold; color:${warna};">${statusLabel}</td>
       </tr>
     `;
   });
 
-  // Lampiran foto
   let lampiranFotoHtml = '';
   daftarSarana.forEach((item) => {
     if (item.fotos && item.fotos.length > 0) {
@@ -65,7 +61,7 @@ export function cetakDokumenPdfResmi(daftarSarana, fungsiHitung, dataAnggaran) {
     <html lang="id">
     <head>
       <meta charset="UTF-8">
-      <title>Laporan Resmi Sarana Lapangan - ${tglCetak}</title>
+      <title>Laporan Sarana Lapangan - ${tglCetak}</title>
       <style>
         body { font-family: Arial, sans-serif; color: #111; padding: 20px; font-size: 10pt; line-height: 1.4; }
         .kop { border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 16px; text-align: center; }
@@ -108,8 +104,7 @@ export function cetakDokumenPdfResmi(daftarSarana, fungsiHitung, dataAnggaran) {
             <th>Lokasi Titik Sarana</th>
             <th style="text-align:right;">Sisa Token</th>
             <th style="text-align:center;">Estimasi Habis</th>
-            <th style="text-align:right;">Kebutuhan 30 Hari</th>
-            <th style="text-align:right;">Estimasi Biaya (PLN)</th>
+            <th style="text-align:right;">Estimasi Biaya PLN</th>
           </tr>
         </thead>
         <tbody>
@@ -124,7 +119,7 @@ export function cetakDokumenPdfResmi(daftarSarana, fungsiHitung, dataAnggaran) {
             <th style="width:30px; text-align:center;">No</th>
             <th>Lokasi Titik</th>
             <th>Tipe / Lampu</th>
-            <th style="text-align:right;">Sisa kWh</th>
+            <th style="text-align:right;">Sisa Token</th>
             <th style="text-align:center;">Estimasi</th>
             <th style="text-align:center;">Status</th>
           </tr>

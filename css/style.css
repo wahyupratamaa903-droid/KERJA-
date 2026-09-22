@@ -372,3 +372,36 @@ input:disabled { opacity: 0.5; background: #0d121c; }
   border-radius: var(--radius);
   color: var(--text-muted);
 }
+
+/* Gaya Tampilan Riwayat Lengkap Tiap Titik */
+.panel-histori-token {
+  background: #0f1624;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  font-size: 0.78rem;
+}
+.panel-histori-token summary {
+  color: #60a5fa;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+}
+.daftar-histori-box {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 140px;
+  overflow-y: auto;
+  border-top: 1px dashed var(--border);
+  padding-top: 6px;
+}
+.baris-histori-item {
+  display: flex;
+  justify-content: space-between;
+  color: #cbd5e1;
+  font-size: 0.75rem;
+  padding: 2px 0;
+}

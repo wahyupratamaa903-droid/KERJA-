@@ -1,4 +1,4 @@
-// js/token-calc.js - Prediksi akurat konsumsi normal & pengisian ulang
+// js/token-calc.js - Prediksi akurat & perlindungan status isi ulang
 
 function parseTgl(str) {
   if (!str) return new Date();
@@ -14,7 +14,7 @@ export function hitungPrediksiHabis(riwayat) {
     return { status: 'baru', pesan: 'Belum ada data token' };
   }
 
-  // Urutkan catatan dari terlama ke terbaru
+  // Urutkan dari catatan terlama ke terbaru
   const urut = [...riwayat].sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
   const terakhir = urut[urut.length - 1];
 
@@ -37,61 +37,36 @@ export function hitungPrediksiHabis(riwayat) {
   let isTopUp = false;
   let keteranganPemakaian = '';
 
+  // Angka bertambah atau sama = DIISI ULANG
   if (selisihKwh <= 0) {
-    // KONDISI PENGISIAN ULANG (Token bertambah)
     isTopUp = true;
+    keteranganPemakaian = 'Status: Diisi Ulang';
 
-    // Cara A: Jika user menginput nominal pembelian token (kwhBeli)
-    if (terakhir.kwhBeli && terakhir.kwhBeli > 0) {
-      const konsumsiRiil = (sebelum.kwh + terakhir.kwhBeli) - terakhir.kwh;
-      if (konsumsiRiil > 0) {
-        rataPerHari = konsumsiRiil / selisihHari;
-        keteranganPemakaian = `Pemakaian Riil: ${konsumsiRiil.toFixed(1)} kWh (${selisihHari} hr)`;
-      }
-    }
-
-    // Cara B: Jika tidak input beli, pinjam laju konsumsi riwayat sebelumnya
-    if (rataPerHari <= 0) {
-      for (let i = urut.length - 2; i > 0; i--) {
-        const itemA = urut[i - 1];
-        const itemB = urut[i];
-        let pakaiLalu = 0;
-
-        if (itemB.kwhBeli && itemB.kwhBeli > 0) {
-          pakaiLalu = (itemA.kwh + itemB.kwhBeli) - itemB.kwh;
-        } else if (itemA.kwh > itemB.kwh) {
-          pakaiLalu = itemA.kwh - itemB.kwh;
-        }
-
-        if (pakaiLalu > 0) {
-          const durasiLalu = Math.max(1, Math.round((parseTgl(itemB.tanggal) - parseTgl(itemA.tanggal)) / (1000 * 60 * 60 * 24)));
-          rataPerHari = pakaiLalu / durasiLalu;
-          keteranganPemakaian = `Status: Diisi Ulang (Laju riwayat lalu)`;
+    // Cari laju konsumsi normal dari riwayat sebelumnya yang pernah berkurang
+    for (let i = urut.length - 2; i > 0; i--) {
+      const itemA = urut[i - 1];
+      const itemB = urut[i];
+      if (itemA.kwh > itemB.kwh) {
+        const durasi = Math.max(1, Math.round((parseTgl(itemB.tanggal) - parseTgl(itemA.tanggal)) / (1000 * 60 * 60 * 24)));
+        const laju = (itemA.kwh - itemB.kwh) / durasi;
+        if (laju > 0 && laju < 1500) {
+          rataPerHari = laju;
           break;
         }
       }
     }
+    // Nilai default konsumsi lampu reklame jika belum ada riwayat turun
+    if (rataPerHari <= 0) rataPerHari = 250;
   } else {
-    // KONDISI KONSUMSI NORMAL (Token berkurang)
+    // Konsumsi normal (angka berkurang)
     rataPerHari = selisihKwh / selisihHari;
+    // Proteksi batas wajar konsumsi harian reklame
+    if (rataPerHari > 3000) rataPerHari = 300;
     keteranganPemakaian = `Pemakaian: ${selisihKwh.toFixed(1)} kWh (${selisihHari} hr)`;
   }
 
-  // Jika belum ada riwayat laju sama sekali
-  if (rataPerHari <= 0) {
-    return {
-      status: 'topup',
-      isTopUp: true,
-      terakhir: { kwh: terakhir.kwh, tanggal: terakhir.tanggal },
-      sebelumnya: { kwh: sebelum.kwh, tanggal: sebelum.tanggal },
-      selisihHari,
-      pesan: 'Token baru diisi ulang (+ kWh). Menunggu 1x catatan berikutnya untuk menghitung laju harian.'
-    };
-  }
+  const estimasiHari = Math.floor(terakhir.kwh / Math.max(1, rataPerHari));
 
-  const estimasiHari = Math.floor(terakhir.kwh / rataPerHari);
-
-  // Perhitungan tanggal kalender habis
   const tglHabisObj = parseTgl(terakhir.tanggal);
   tglHabisObj.setDate(tglHabisObj.getDate() + estimasiHari);
   const tanggalHabis = tglHabisObj.toLocaleDateString('id-ID', {
@@ -100,9 +75,20 @@ export function hitungPrediksiHabis(riwayat) {
     year: 'numeric'
   });
 
+  // Tentukan status: Kritis jika sisa token < 1.500 atau habis <= 3 hari
   let status = 'aman';
-  if (estimasiHari <= 3) status = 'kritis';
-  else if (estimasiHari <= 7) status = 'waspada';
+  if (terakhir.kwh < 3000 || estimasiHari <= 7) {
+    if (terakhir.kwh < 1500 || estimasiHari <= 3) {
+      status = 'kritis';
+    } else {
+      status = 'waspada';
+    }
+  }
+
+  // Token yang baru diisi ulang dan saldonya di atas 3.000 kWh otomatis berstatus AMAN
+  if (isTopUp && terakhir.kwh >= 3000) {
+    status = 'aman';
+  }
 
   return {
     status,
