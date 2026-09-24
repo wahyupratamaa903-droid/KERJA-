@@ -38,15 +38,17 @@ const btnScanForm = document.getElementById('btn-scan-form');
 const btnScanModal = document.getElementById('btn-scan-modal');
 let targetInputOcr = null;
 
-// Modal
+// Modal Update
 const modalUpdate = document.getElementById('modal-update');
 const formUpdate = document.getElementById('form-update');
 const btnTutupModal = document.getElementById('btn-tutup-modal');
 
+// Modal Anggaran
 const modalAnggaran = document.getElementById('modal-anggaran');
 const kontenRincianAnggaran = document.getElementById('konten-rincian-anggaran');
 const btnTutupAnggaran = document.getElementById('btn-tutup-anggaran');
 
+// Modal Edit
 const modalEdit = document.getElementById('modal-edit');
 const formEdit = document.getElementById('form-edit');
 const btnTutupEdit = document.getElementById('btn-tutup-edit');
@@ -67,7 +69,7 @@ const tglHariIni = new Date().toISOString().split('T')[0];
 document.getElementById('tanggalPengecekan').value = tglHariIni;
 document.getElementById('modalTanggal').value = tglHariIni;
 
-// Navigasi Bawah Tab View
+// Navigasi Bawah
 const navButtons = document.querySelectorAll('.nav-bottom .nav-item');
 const tabViews = document.querySelectorAll('.tab-view');
 
@@ -149,27 +151,37 @@ btnToolRute.addEventListener('click', async () => {
   }
 });
 
+// Modal Estimasi Anggaran Sesuai Acuan Bu Reni
 btnToolAnggaran.addEventListener('click', () => {
   const hasil = hitungEstimasiBiaya(dataSarana, hitungPrediksiHabis);
 
   let rincianHtml = `
     <div style="background:#0f172a; padding:12px; border-radius:8px; margin-bottom:12px; border:1px solid #1e293b;">
-      <div style="font-size:0.8rem; color:#94a3b8;">Total Kebutuhan Anggaran:</div>
-      <div style="font-size:1.4rem; font-weight:800; color:#10b981;">Rp ${hasil.totalEstimasiBiaya.toLocaleString('id-ID')}</div>
-      <div style="font-size:0.75rem; color:#60a5fa; margin-top:2px;">Untuk ${hasil.saranaKritis.length} sarana kritis (standar Rp500.000 / titik)</div>
+      <div style="font-size:0.75rem; color:#94a3b8; text-transform:uppercase;">Total Pengajuan Dana Disarankan:</div>
+      <div style="font-size:1.45rem; font-weight:800; color:#10b981; margin:2px 0;">Rp ${hasil.totalEstimasiBiaya.toLocaleString('id-ID')}</div>
+      <div style="font-size:0.75rem; color:#60a5fa;">Terdapat ${hasil.daftarPengajuan.length} titik masuk batas pengajuan Bu Reni</div>
     </div>
   `;
 
-  if (hasil.saranaKritis.length === 0) {
-    rincianHtml += `<p style="font-size:0.85rem; color:#10b981;">Seluruh sarana dalam kondisi aman.</p>`;
+  if (hasil.daftarPengajuan.length === 0) {
+    rincianHtml += `<p style="font-size:0.85rem; color:#10b981; text-align:center; padding:10px;">Semua titik sarana masih memiliki saldo aman di atas ambang batas pengajuan.</p>`;
   } else {
     rincianHtml += `<div style="display:flex; flex-direction:column; gap:8px;">`;
-    hasil.saranaKritis.forEach(item => {
+    hasil.daftarPengajuan.forEach(item => {
       rincianHtml += `
-        <div style="background:#1a2336; padding:8px 10px; border-radius:6px; border-left:3px solid #ef4444; font-size:0.8rem;">
-          <strong>${item.lokasi}</strong><br>
-          <span style="color:#94a3b8;">Sisa: ${item.sisaKwh.toLocaleString('id-ID')} kWh • Habis: ±${item.estimasiHari} hari</span><br>
-          <span style="color:#f59e0b; font-weight:600;">Paket Beli: Rp ${item.estimasiRp.toLocaleString('id-ID')}</span>
+        <div style="background:#1a2336; padding:10px; border-radius:8px; border-left:3px solid #f59e0b; font-size:0.8rem;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:4px;">
+            <strong style="color:#fff;">${item.lokasi}</strong>
+            <span style="background:rgba(16,185,129,0.15); color:#10b981; font-weight:700; padding:2px 6px; border-radius:4px;">
+              Rp ${item.nominalRekomendasi.toLocaleString('id-ID')}
+            </span>
+          </div>
+          <div style="font-size:0.72rem; color:#94a3b8; margin-bottom:2px;">
+            Sisa: <strong>${item.sisaKwh.toLocaleString('id-ID')} kWh</strong> • Habis: ±${item.estimasiHari} hari (${item.tanggalHabis})
+          </div>
+          <div style="font-size:0.72rem; color:#fcd34d;">
+            📌 ${item.alasan}
+          </div>
         </div>
       `;
     });
@@ -561,9 +573,6 @@ formUpdate.addEventListener('submit', (e) => {
 btnTutupModal.addEventListener('click', () => { modalUpdate.style.display = 'none'; });
 btnTutupEdit.addEventListener('click', () => { modalEdit.style.display = 'none'; });
 
-// ----------------------------------------------------
-// RENDER MISI LAPANGAN & BBM OPERASIONAL
-// ----------------------------------------------------
 function renderMisiDanBBM() {
   const containerMisi = document.getElementById('container-list-misi');
   const labelTgl = document.getElementById('label-tgl-misi');
@@ -587,7 +596,7 @@ function renderMisiDanBBM() {
     </div>
   `).join('');
 
-  // Render Status BBM
+  // Render BBM
   const infoBbm = getStatusBBM();
   document.getElementById('bbm-rentang-text').textContent = infoBbm.rentangPeriode;
   document.getElementById('bbm-sisa-rp').textContent = `Rp ${infoBbm.sisa.toLocaleString('id-ID')}`;
@@ -598,7 +607,6 @@ function renderMisiDanBBM() {
   elFill.style.width = `${persenSisa}%`;
   elFill.style.background = persenSisa <= 20 ? '#ef4444' : persenSisa <= 50 ? '#f59e0b' : '#10b981';
 
-  // Render Riwayat BBM
   const boxRiwayat = document.getElementById('list-riwayat-bbm');
   if (infoBbm.riwayat.length === 0) {
     boxRiwayat.innerHTML = `<span style="color:#64748b; font-size:0.75rem;">Belum ada pengisian bensin periode ini.</span>`;
@@ -612,7 +620,6 @@ function renderMisiDanBBM() {
   }
 }
 
-// Preset Tombol Cepat BBM (+20rb / +30rb / +50rb)
 document.querySelectorAll('.btn-preset-bbm').forEach(btn => {
   btn.addEventListener('click', () => {
     const nominal = Number(btn.getAttribute('data-nominal'));
@@ -621,7 +628,6 @@ document.querySelectorAll('.btn-preset-bbm').forEach(btn => {
   });
 });
 
-// Form Manual BBM
 document.getElementById('form-catat-bbm').addEventListener('submit', (e) => {
   e.preventDefault();
   const inputNominal = document.getElementById('input-nominal-bbm');

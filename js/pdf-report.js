@@ -1,4 +1,4 @@
-// js/pdf-report.js - Laporan resmi PDF dengan estimasi anggaran standar
+// js/pdf-report.js - Laporan Resmi PDF Berdasarkan Acuan Pengajuan Bu Reni
 
 export function cetakDokumenPdfResmi(daftarSarana, fungsiHitung, dataAnggaran) {
   const tglCetak = new Date().toLocaleDateString('id-ID', {
@@ -8,17 +8,18 @@ export function cetakDokumenPdfResmi(daftarSarana, fungsiHitung, dataAnggaran) {
   });
 
   let barisPrioritas = '';
-  if (dataAnggaran.saranaKritis.length === 0) {
-    barisPrioritas = `<tr><td colspan="5" style="text-align:center; padding:10px; color:#10b981;">Semua titik sarana dalam kondisi aman.</td></tr>`;
+  if (dataAnggaran.daftarPengajuan.length === 0) {
+    barisPrioritas = `<tr><td colspan="6" style="text-align:center; padding:10px; color:#10b981;">Semua titik sarana dalam kondisi aman di atas batas pengajuan.</td></tr>`;
   } else {
-    dataAnggaran.saranaKritis.forEach((item, idx) => {
+    dataAnggaran.daftarPengajuan.forEach((item, idx) => {
       barisPrioritas += `
         <tr>
           <td style="text-align:center;">${idx + 1}</td>
           <td><strong>${item.lokasi}</strong> (${item.tipe})</td>
+          <td style="text-align:center;">${item.jumlahLampu} FL</td>
           <td style="text-align:right;">${item.sisaKwh.toLocaleString('id-ID')} kWh</td>
-          <td style="text-align:center; color:#b91c1c; font-weight:bold;">±${item.estimasiHari} hari (${item.tanggalHabis})</td>
-          <td style="text-align:right; font-weight:bold;">Rp ${item.estimasiRp.toLocaleString('id-ID')}</td>
+          <td>${item.alasan}</td>
+          <td style="text-align:right; font-weight:bold; color:#047857;">Rp ${item.nominalRekomendasi.toLocaleString('id-ID')}</td>
         </tr>
       `;
     });
@@ -34,7 +35,7 @@ export function cetakDokumenPdfResmi(daftarSarana, fungsiHitung, dataAnggaran) {
       <tr>
         <td style="text-align:center;">${idx + 1}</td>
         <td><strong>${item.lokasi}</strong></td>
-        <td>${item.tipe} / ${item.jenisLampu || '-'}</td>
+        <td>${item.tipe} / ${item.jenisLampu || '-'} (${item.jumlahLampu || 0} Titik)</td>
         <td style="text-align:right;">${info.terakhir.kwh.toLocaleString('id-ID')} kWh</td>
         <td style="text-align:center;">${info.estimasiHari ? info.estimasiHari + ' hari' : '-'}</td>
         <td style="text-align:center; font-weight:bold; color:${warna};">${statusLabel}</td>
@@ -61,7 +62,7 @@ export function cetakDokumenPdfResmi(daftarSarana, fungsiHitung, dataAnggaran) {
     <html lang="id">
     <head>
       <meta charset="UTF-8">
-      <title>Laporan Sarana Lapangan - ${tglCetak}</title>
+      <title>Laporan Pengajuan Token - ${tglCetak}</title>
       <style>
         body { font-family: Arial, sans-serif; color: #111; padding: 20px; font-size: 10pt; line-height: 1.4; }
         .kop { border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 16px; text-align: center; }
@@ -69,9 +70,9 @@ export function cetakDokumenPdfResmi(daftarSarana, fungsiHitung, dataAnggaran) {
         .kop p { margin: 2px 0 0 0; font-size: 9pt; color: #444; }
         .info-rekap { display: flex; justify-content: space-between; margin-bottom: 14px; font-size: 9.5pt; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 18px; }
-        th, td { border: 1px solid #777; padding: 6px 8px; }
-        th { background-color: #f1f5f9; text-align: left; font-size: 9pt; }
-        .sub-judul { font-size: 11pt; font-weight: bold; margin: 16px 0 6px 0; border-left: 4px solid #2563eb; padding-left: 8px; }
+        th, td { border: 1px solid #777; padding: 6px 8px; font-size: 8.5pt; }
+        th { background-color: #f1f5f9; text-align: left; }
+        .sub-judul { font-size: 10.5pt; font-weight: bold; margin: 16px 0 6px 0; border-left: 4px solid #2563eb; padding-left: 8px; }
         @media print {
           body { padding: 0; }
           .no-print { display: none; }
@@ -86,25 +87,26 @@ export function cetakDokumenPdfResmi(daftarSarana, fungsiHitung, dataAnggaran) {
       </div>
 
       <div class="kop">
-        <h2>Laporan Monitoring & Estimasi Token Sarana Reklame</h2>
-        <p>Wilayah Operasional Kota Bengkulu • Tanggal Dokumen: ${tglCetak}</p>
+        <h2>Laporan Pengajuan Token Listrik Reklame</h2>
+        <p>PT DEVIS JAYA • Cabang Bengkulu • Tanggal Dokumen: ${tglCetak}</p>
       </div>
 
       <div class="info-rekap">
-        <div>Total Sarana: <strong>${daftarSarana.length} Titik</strong></div>
-        <div>Prioritas Pengisian: <strong style="color:#b91c1c;">${dataAnggaran.saranaKritis.length} Titik</strong></div>
-        <div>Total Estimasi Anggaran: <strong>Rp ${dataAnggaran.totalEstimasiBiaya.toLocaleString('id-ID')}</strong></div>
+        <div>Total Sarana Terdaftar: <strong>${daftarSarana.length} Titik</strong></div>
+        <div>Waktunya Pengajuan: <strong style="color:#b91c1c;">${dataAnggaran.daftarPengajuan.length} Titik</strong></div>
+        <div>Total Pengajuan Dana: <strong style="color:#047857;">Rp ${dataAnggaran.totalEstimasiBiaya.toLocaleString('id-ID')}</strong></div>
       </div>
 
-      <div class="sub-judul">1. Prioritas Pengisian Token Listrik (Kritis / Waspada)</div>
+      <div class="sub-judul">1. Rekomendasi Pengajuan Voucher Token PLN (Sesuai Batas Bu Reni)</div>
       <table>
         <thead>
           <tr>
-            <th style="width:30px; text-align:center;">No</th>
+            <th style="width:25px; text-align:center;">No</th>
             <th>Lokasi Titik Sarana</th>
-            <th style="text-align:right;">Sisa Token</th>
-            <th style="text-align:center;">Estimasi Habis</th>
-            <th style="text-align:right;">Estimasi Biaya PLN</th>
+            <th style="width:50px; text-align:center;">Lampu</th>
+            <th style="width:75px; text-align:right;">Sisa Token</th>
+            <th>Keterangan / Alasan Pengajuan</th>
+            <th style="width:90px; text-align:right;">Rekomendasi</th>
           </tr>
         </thead>
         <tbody>
@@ -112,16 +114,16 @@ export function cetakDokumenPdfResmi(daftarSarana, fungsiHitung, dataAnggaran) {
         </tbody>
       </table>
 
-      <div class="sub-judul">2. Rekapitulasi Inventaris Seluruh Sarana</div>
+      <div class="sub-judul">2. Status Lengkap Seluruh Sarana Lapangan</div>
       <table>
         <thead>
           <tr>
-            <th style="width:30px; text-align:center;">No</th>
+            <th style="width:25px; text-align:center;">No</th>
             <th>Lokasi Titik</th>
-            <th>Tipe / Lampu</th>
-            <th style="text-align:right;">Sisa Token</th>
-            <th style="text-align:center;">Estimasi</th>
-            <th style="text-align:center;">Status</th>
+            <th>Tipe / Konfigurasi</th>
+            <th style="width:80px; text-align:right;">Sisa Token</th>
+            <th style="width:65px; text-align:center;">Estimasi</th>
+            <th style="width:70px; text-align:center;">Status</th>
           </tr>
         </thead>
         <tbody>
@@ -129,7 +131,7 @@ export function cetakDokumenPdfResmi(daftarSarana, fungsiHitung, dataAnggaran) {
         </tbody>
       </table>
 
-      <div class="sub-judul" style="page-break-before:always;">3. Lampiran Dokumentasi Visual Lapangan</div>
+      <div class="sub-judul" style="page-break-before:always;">3. Lampiran Dokumentasi Lapangan</div>
       ${lampiranFotoHtml || '<p style="color:#777;">Tidak ada lampiran foto dokumentasi.</p>'}
     </body>
     </html>

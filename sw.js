@@ -1,5 +1,5 @@
-// sw.js - Service Worker Cache v3
-const CACHE_NAME = 'sarana-cache-v3';
+// sw.js - Service Worker Cache v4
+const CACHE_NAME = 'sarana-cache-v4';
 const ASSETS = [
   './',
   './index.html',
