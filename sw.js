@@ -1,5 +1,5 @@
-// sw.js - Service Worker Cache Auto-Update v2
-const CACHE_NAME = 'sarana-cache-v2';
+// sw.js - Service Worker Cache v3
+const CACHE_NAME = 'sarana-cache-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -32,9 +32,7 @@ self.addEventListener('activate', (e) => {
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((k) => {
-          if (k !== CACHE_NAME) {
-            return caches.delete(k); // Hapus total cache v1 yang mengunci layar lama
-          }
+          if (k !== CACHE_NAME) return caches.delete(k);
         })
       );
     })
