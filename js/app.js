@@ -9,8 +9,8 @@ import { cetakDokumenPdfResmi } from './pdf-report.js';
 import { scanAngkaMeteranDariFile } from './ocr.js';
 import { inisialisasiPeta, perbaruiPinPeta, perbaruiLokasiUserDiPeta, perbaikiUkuranPeta } from './map.js';
 import { pasangAlarmTokenHabis } from './calendar-sync.js';
+import { dapatkanMisiHariIni, getStatusBBM, catatIsiBbm, getLogVinil, simpanLogVinil } from './mission.js';
 
-// Registrasi Service Worker PWA
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch((err) => console.log('SW Gagal:', err));
@@ -81,7 +81,6 @@ navButtons.forEach((btn) => {
     const viewTarget = document.getElementById(tabTarget);
     if (viewTarget) viewTarget.classList.add('active');
 
-    // Jika tab Peta dibuka, inisialisasi dan sesuaikan ukuran petanya
     if (tabTarget === 'view-peta') {
       inisialisasiPeta();
       perbaruiPinPeta(dataSarana, hitungPrediksiHabis);
@@ -89,6 +88,8 @@ navButtons.forEach((btn) => {
         perbaruiLokasiUserDiPeta(posisiUserSekarang.lat, posisiUserSekarang.lng);
       }
       perbaikiUkuranPeta();
+    } else if (tabTarget === 'view-misi') {
+      renderMisiDanOperasional();
     }
   });
 });
@@ -190,7 +191,6 @@ btnToolPdf.addEventListener('click', () => {
   cetakDokumenPdfResmi(dataSarana, hitungPrediksiHabis, hasilAnggaran);
 });
 
-// Fitur Sinkron Kalender
 btnToolKalender.addEventListener('click', () => {
   pasangAlarmTokenHabis(dataSarana, hitungPrediksiHabis);
 });
@@ -560,6 +560,93 @@ formUpdate.addEventListener('submit', (e) => {
 
 btnTutupModal.addEventListener('click', () => { modalUpdate.style.display = 'none'; });
 btnTutupEdit.addEventListener('click', () => { modalEdit.style.display = 'none'; });
+
+// ----------------------------------------------------
+// FUNGSI RENDER MISI & OPERASIONAL LAPANGAN (TAB 3)
+// ----------------------------------------------------
+function renderMisiDanOperasional() {
+  const containerMisi = document.getElementById('container-list-misi');
+  const labelTgl = document.getElementById('label-tgl-misi');
+  const sekarang = new Date();
+
+  labelTgl.textContent = sekarang.toLocaleDateString('id-ID', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short'
+  });
+
+  const daftarMisi = dapatkanMisiHariIni();
+  if (daftarMisi.length === 0) {
+    containerMisi.innerHTML = `
+      <div style="text-align:center; padding:12px; color:#94a3b8; font-size:0.8rem;">
+        Tidak ada agenda foto khusus hari ini. Lanjutkan patroli dan pemantauan token rutin.
+      </div>
+    `;
+  } else {
+    containerMisi.innerHTML = daftarMisi.map(m => `
+      <div class="misi-item ${m.urgent ? 'urgent' : ''}">
+        <div class="misi-top">
+          <span class="misi-tag">${m.kategori}</span>
+        </div>
+        <div class="misi-judul">${m.judul}</div>
+        <div class="misi-detail">${m.detail}</div>
+        <div class="misi-target">🎯 ${m.target}</div>
+      </div>
+    `).join('');
+  }
+
+  // Render BBM
+  const infoBbm = getStatusBBM();
+  document.getElementById('bbm-sisa-rp').textContent = `Rp ${infoBbm.sisa.toLocaleString('id-ID')}`;
+  document.getElementById('bbm-tempo-info').textContent = `Batas: ${infoBbm.sisaHariRabu}`;
+  const persenSisa = Math.max(0, Math.min(100, (infoBbm.sisa / infoBbm.plafon) * 100));
+  const elFill = document.getElementById('bbm-progress-fill');
+  elFill.style.width = `${persenSisa}%`;
+  elFill.style.background = persenSisa < 25 ? '#ef4444' : persenSisa < 50 ? '#f59e0b' : '#10b981';
+
+  // Render Log Vinil
+  const listVinilBox = document.getElementById('list-riwayat-vinil');
+  const logs = getLogVinil();
+  if (logs.length === 0) {
+    listVinilBox.innerHTML = `<span style="color:#64748b; font-size:0.75rem;">Belum ada catatan pengambilan vinil baru.</span>`;
+  } else {
+    listVinilBox.innerHTML = logs.slice(0, 5).map(l => `
+      <div class="vinil-item">
+        <div>
+          <strong style="color:#fff;">${l.klien}</strong><br>
+          <span style="color:#94a3b8;">${l.tujuan} • ${l.penerima}</span>
+        </div>
+        <span style="color:#60a5fa; font-weight:700;">${l.tanggal}</span>
+      </div>
+    `).join('');
+  }
+}
+
+// Event Form BBM
+document.getElementById('form-catat-bbm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const inputNominal = document.getElementById('input-nominal-bbm');
+  const val = Number(inputNominal.value);
+  if (val > 0) {
+    catatIsiBbm(val);
+    inputNominal.value = '';
+    renderMisiDanOperasional();
+  }
+});
+
+// Event Form Vinil
+document.getElementById('form-log-vinil').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const klien = document.getElementById('vinil-klien').value.trim();
+  const tujuan = document.getElementById('vinil-tujuan').value;
+  const penerima = document.getElementById('vinil-penerima').value.trim();
+
+  if (klien && penerima) {
+    simpanLogVinil({ klien, tujuan, penerima });
+    document.getElementById('form-log-vinil').reset();
+    renderMisiDanOperasional();
+  }
+});
 
 function inisialisasiAplikasi() {
   inisialisasiPenampilFoto();

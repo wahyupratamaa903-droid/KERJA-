@@ -1,10 +1,9 @@
-// js/map.js - Peta Satelit Interaktif Lapangan GIS Kota Bengkulu
+// js/map.js - Peta Satelit Interaktif Lapangan GIS Kota Bengkulu (Clean OSM Tile)
 
 let map = null;
 let markerLayer = null;
 let userMarker = null;
 
-// Buat ikon pin SVG kustom sesuai status token
 function buatIconPin(warna) {
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="28" height="38">
@@ -34,16 +33,15 @@ const iconBiruUser = L.divIcon({
 export function inisialisasiPeta(containerId = 'peta-gis') {
   if (map) return map;
 
-  // Koordinat pusat Kota Bengkulu (Simpang Lima Ratu Samban)
   map = L.map(containerId, {
     zoomControl: false
   }).setView([-3.7928, 102.2608], 13);
 
   L.control.zoom({ position: 'topright' }).addTo(map);
 
-  // Basemap CartoDB Dark Matter yang kontras dan bersih di HP
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+  // Basemap resmi OpenStreetMap - Bersih, Akurat, Tanpa Watermark API Key
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
     maxZoom: 19
   }).addTo(map);
 

@@ -147,14 +147,72 @@
       <div id="peta-gis"></div>
     </main>
 
-    <!-- TAB VIEW 3: MISI & OPERASIONAL (SIAP UNTUK TAHAP 2) -->
+    <!-- TAB VIEW 3: MISI & OPERASIONAL LAPANGAN (MINIMALIS & RAPI) -->
     <main id="view-misi" class="tab-view">
-      <div class="state-kosong" style="background:var(--surface); border:1px solid var(--border); padding:20px; text-align:left;">
-        <h3 style="color:#60a5fa; margin-bottom:8px;">📋 Modul Operasional PT DEVIS JAYA</h3>
-        <p style="font-size:0.85rem; color:#cbd5e1; line-height:1.5;">
-          Tab ini disiapkan untuk <strong>Daily Mission Control</strong> (Jadwal Foto BYD Senin & HMS siklus 1-4, 10-14, 20-24), <strong>Smart Fuel Burn-Down</strong> (BBM Rp50.000 Kamis-Rabu), dan <strong>Smart Stamp Camera</strong> (Foto 3 Jarak).
-        </p>
-      </div>
+      <!-- 1. Radar Misi Hari Ini -->
+      <section class="misi-card">
+        <div class="misi-header">
+          <div>
+            <span class="sub-label">JADWAL & AGENDA</span>
+            <h3>Misi Lapangan Hari Ini</h3>
+          </div>
+          <span id="label-tgl-misi" class="badge-tgl">Hari Ini</span>
+        </div>
+        <div id="container-list-misi" class="misi-list-box"></div>
+      </section>
+
+      <!-- 2. Plafon BBM Mingguan -->
+      <section class="misi-card">
+        <div class="misi-header">
+          <div>
+            <span class="sub-label">OPERASIONAL MOTOR</span>
+            <h3>Plafon BBM (Kamis - Rabu)</h3>
+          </div>
+          <span class="badge-bbm-limit">Jatah: Rp 50.000</span>
+        </div>
+
+        <div class="bbm-bar-wrapper">
+          <div class="bbm-bar-info">
+            <span>Sisa Saldo: <strong id="bbm-sisa-rp">Rp 50.000</strong></span>
+            <small id="bbm-tempo-info">Batas: Hari Rabu</small>
+          </div>
+          <div class="bbm-progress-bg">
+            <div id="bbm-progress-fill" class="bbm-progress-fill" style="width: 100%;"></div>
+          </div>
+        </div>
+
+        <form id="form-catat-bbm" class="bbm-quick-form">
+          <input type="number" id="input-nominal-bbm" placeholder="Nominal isi (Rp)..." required>
+          <button type="submit" class="btn-catat-bbm">+ Catat SPBU</button>
+        </form>
+      </section>
+
+      <!-- 3. Dispatch Vinil Sampoerna Rawa Makmur -->
+      <section class="misi-card">
+        <div class="misi-header">
+          <div>
+            <span class="sub-label">LOGISTIK GAMBAR</span>
+            <h3>Vinil Sampoerna Rawa Makmur</h3>
+          </div>
+          <span class="badge-vinil">Distribusi</span>
+        </div>
+
+        <form id="form-log-vinil" class="vinil-form">
+          <div class="form-group">
+            <input type="text" id="vinil-klien" placeholder="Klien / Materi (Contoh: Sampoerna / BYD)" required>
+          </div>
+          <div class="form-row">
+            <select id="vinil-tujuan" required>
+              <option value="Bengkulu (Subkon)">Bengkulu (Ke Subkon)</option>
+              <option value="Linggau (Ekspedisi)">Linggau (Ke Ekspedisi)</option>
+            </select>
+            <input type="text" id="vinil-penerima" placeholder="Nama Subkon / Ekspedisi" required>
+          </div>
+          <button type="submit" class="btn-submit" style="padding: 10px; font-size: 0.8rem;">Catat Serah Terima Vinil</button>
+        </form>
+
+        <div id="list-riwayat-vinil" class="vinil-list-box"></div>
+      </section>
     </main>
   </div>
 
