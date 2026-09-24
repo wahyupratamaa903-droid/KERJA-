@@ -18,32 +18,94 @@ body {
   font-family: system-ui, -apple-system, sans-serif;
   background: var(--bg);
   color: var(--text);
-  padding: 14px 14px 80px 14px;
+  padding: 14px 14px 85px 14px;
 }
 
 .wrapper { max-width: 480px; margin: 0 auto; }
-header { text-align: center; margin-bottom: 16px; }
+header { text-align: center; margin-bottom: 14px; }
 header h1 { font-size: 1.25rem; }
 header p { font-size: 0.8rem; color: var(--text-muted); }
+
+/* Kontrol Tab Tampilan */
+.tab-view { display: none; }
+.tab-view.active { display: block; }
+
+/* Panel Peta GIS */
+#view-peta {
+  position: relative;
+  height: calc(100vh - 120px);
+  min-height: 480px;
+  width: 100%;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+#peta-gis {
+  width: 100%;
+  height: 100%;
+  background: #111;
+}
+.map-overlay-box {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  z-index: 1000;
+  background: rgba(19, 26, 42, 0.92);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+}
+.map-legend { display: flex; gap: 8px; }
+.leg-item { display: flex; align-items: center; gap: 4px; font-weight: 600; font-size: 0.7rem; }
+.leg-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+/* Radar Posisi GPS User */
+.radar-dot {
+  width: 14px;
+  height: 14px;
+  background: #3b82f6;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  position: relative;
+}
+.radar-pulse {
+  position: absolute;
+  top: -7px;
+  left: -7px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.45);
+  animation: pulsaRadar 1.8s infinite ease-out;
+}
+@keyframes pulsaRadar {
+  0% { transform: scale(0.6); opacity: 1; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
 
 .panel-statistik {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 .stat-item {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 12px;
+  padding: 10px;
   text-align: center;
 }
-.stat-angka { display: block; font-size: 1.5rem; font-weight: 800; }
-.stat-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; }
+.stat-angka { display: block; font-size: 1.45rem; font-weight: 800; }
+.stat-label { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; }
 .stat-item.danger .stat-angka { color: var(--danger); }
 
-/* Tombol WhatsApp */
 .btn-wa-laporan {
   width: 100%;
   padding: 11px;
@@ -57,20 +119,19 @@ header p { font-size: 0.8rem; color: var(--text-muted); }
   font-size: 0.85rem;
 }
 
-/* Panel Alat Lapangan (Toolbar 3 Tombol) */
 .toolbar-lapangan {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 6px;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 .btn-tool {
   background: var(--surface);
   border: 1px solid var(--border);
   color: #cbd5e1;
-  padding: 9px 6px;
+  padding: 8px 4px;
   border-radius: 8px;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 600;
   cursor: pointer;
   display: flex;
@@ -109,12 +170,9 @@ input, select {
 }
 input:disabled { opacity: 0.5; background: #0d121c; }
 
-/* Input kWh dengan Tombol Kamera OCR */
-.input-ocr-group {
-  display: flex;
-  gap: 6px;
-}
-.input-ocr-group input { flex: 1; }
+.input-ocr-group, .gps-input-group { display: flex; gap: 6px; }
+.input-ocr-group input, .gps-input-group input { flex: 1; }
+
 .btn-ocr-scan {
   background: #1e293b;
   border: 1px solid var(--border);
@@ -127,11 +185,6 @@ input:disabled { opacity: 0.5; background: #0d121c; }
   white-space: nowrap;
 }
 
-.gps-input-group {
-  display: flex;
-  gap: 6px;
-}
-.gps-input-group input { flex: 1; }
 .btn-gps-auto {
   background: var(--surface-soft);
   border: 1px solid var(--border);
@@ -191,8 +244,6 @@ input:disabled { opacity: 0.5; background: #0d121c; }
   border-color: var(--primary);
 }
 
-.judul-bagian { font-size: 1rem; margin-bottom: 8px; }
-
 .kartu-sarana {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -237,6 +288,26 @@ input:disabled { opacity: 0.5; background: #0d121c; }
 .item-riwayat .label-r { display: block; font-size: 0.7rem; color: var(--text-muted); }
 .item-riwayat strong { font-size: 0.95rem; }
 .item-riwayat small { display: block; font-size: 0.7rem; color: var(--text-muted); }
+
+.panel-histori-token {
+  background: #0f1624;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  font-size: 0.78rem;
+}
+.panel-histori-token summary { color: #60a5fa; font-weight: 600; cursor: pointer; }
+.daftar-histori-box {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 140px;
+  overflow-y: auto;
+  border-top: 1px dashed var(--border);
+  padding-top: 6px;
+}
 
 .grid-ringkasan {
   background: #0f1624;
@@ -323,7 +394,7 @@ input:disabled { opacity: 0.5; background: #0d121c; }
   align-items: center;
   justify-content: center;
   padding: 16px;
-  z-index: 100;
+  z-index: 2000;
 }
 .modal-konten {
   background: var(--surface);
@@ -342,6 +413,7 @@ input:disabled { opacity: 0.5; background: #0d121c; }
   border-radius: 8px;
 }
 
+/* Navigasi Bawah 3 Menu */
 .nav-bottom {
   position: fixed;
   bottom: 0;
@@ -349,19 +421,22 @@ input:disabled { opacity: 0.5; background: #0d121c; }
   right: 0;
   background: #0d131f;
   border-top: 1px solid var(--border);
-  display: flex;
-  justify-content: space-around;
-  padding: 10px 0;
-  z-index: 50;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  padding: 8px 0;
+  z-index: 1500;
 }
 .nav-item {
   color: var(--text-muted);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   text-decoration: none;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
 }
 .nav-item.active { color: #60a5fa; font-weight: 700; }
 
@@ -371,37 +446,4 @@ input:disabled { opacity: 0.5; background: #0d121c; }
   border: 1px dashed var(--border);
   border-radius: var(--radius);
   color: var(--text-muted);
-}
-
-/* Gaya Tampilan Riwayat Lengkap Tiap Titik */
-.panel-histori-token {
-  background: #0f1624;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 8px 10px;
-  margin-bottom: 8px;
-  font-size: 0.78rem;
-}
-.panel-histori-token summary {
-  color: #60a5fa;
-  font-weight: 600;
-  cursor: pointer;
-  outline: none;
-}
-.daftar-histori-box {
-  margin-top: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  max-height: 140px;
-  overflow-y: auto;
-  border-top: 1px dashed var(--border);
-  padding-top: 6px;
-}
-.baris-histori-item {
-  display: flex;
-  justify-content: space-between;
-  color: #cbd5e1;
-  font-size: 0.75rem;
-  padding: 2px 0;
 }

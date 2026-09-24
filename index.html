@@ -3,124 +3,159 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Sistem Kerja Lapangan</title>
+  <title>Monitoring Sarana Lapangan</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#090d16">
+
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <div class="wrapper">
     <header>
       <h1>Monitoring Sarana Lapangan</h1>
-      <p>Pencatatan Sarana & Prediksi Token Listrik</p>
+      <p>PT DEVIS JAYA • Bengkulu</p>
     </header>
 
-    <section class="panel-statistik">
-      <div class="stat-item">
-        <span class="stat-angka" id="stat-total">0</span>
-        <span class="stat-label">Total Sarana</span>
-      </div>
-      <div class="stat-item danger">
-        <span class="stat-angka" id="stat-isi">0</span>
-        <span class="stat-label">Perlu Diisi</span>
-      </div>
-    </section>
+    <!-- TAB VIEW 1: DAFTAR SARANA & PATROLI -->
+    <main id="view-sarana" class="tab-view active">
+      <section class="panel-statistik">
+        <div class="stat-item">
+          <span class="stat-angka" id="stat-total">0</span>
+          <span class="stat-label">Total Sarana</span>
+        </div>
+        <div class="stat-item danger">
+          <span class="stat-angka" id="stat-isi">0</span>
+          <span class="stat-label">Perlu Diisi</span>
+        </div>
+      </section>
 
-    <button type="button" id="btn-ekspor-wa" class="btn-wa-laporan">Kirim Rekap ke WhatsApp</button>
+      <button type="button" id="btn-ekspor-wa" class="btn-wa-laporan">Kirim Rekap ke WhatsApp</button>
 
-    <!-- Toolbar Alat Lapangan Pengganti Tombol Lama -->
-    <div class="toolbar-lapangan">
-      <button type="button" id="btn-tool-rute" class="btn-tool">
-        <span>🧭</span>
-        <span>Rute Patroli</span>
-      </button>
-      <button type="button" id="btn-tool-anggaran" class="btn-tool">
-        <span>💰</span>
-        <span>Estimasi Biaya</span>
-      </button>
-      <button type="button" id="btn-tool-pdf" class="btn-tool">
-        <span>📄</span>
-        <span>Cetak PDF</span>
-      </button>
-    </div>
-
-    <!-- Hidden Input File Khusus OCR Kamera -->
-    <input type="file" id="input-file-ocr" accept="image/*" capture="environment" style="display:none;">
-
-    <form id="form-sarana" class="form-box">
-      <h2 class="form-title">Catat Titik Sarana Baru</h2>
-
-      <div class="form-group">
-        <label for="lokasi">Nama Titik / Lokasi Jalan</label>
-        <input type="text" id="lokasi" placeholder="Contoh: Jl. S. Parman (Dekat Amira)" required>
+      <div class="toolbar-lapangan">
+        <button type="button" id="btn-tool-rute" class="btn-tool">
+          <span>🧭</span>
+          <span>Rute Urut</span>
+        </button>
+        <button type="button" id="btn-tool-anggaran" class="btn-tool">
+          <span>💰</span>
+          <span>Estimasi</span>
+        </button>
+        <button type="button" id="btn-tool-pdf" class="btn-tool">
+          <span>📄</span>
+          <span>PDF Formal</span>
+        </button>
+        <button type="button" id="btn-tool-kalender" class="btn-tool">
+          <span>⏰</span>
+          <span>Alarm Cek</span>
+        </button>
       </div>
 
-      <div class="form-row">
+      <input type="file" id="input-file-ocr" accept="image/*" capture="environment" style="display:none;">
+
+      <form id="form-sarana" class="form-box">
+        <h2 class="form-title">Catat Titik Sarana Baru</h2>
+
         <div class="form-group">
-          <label for="tipe">Tipe Sarana</label>
-          <select id="tipe">
-            <option value="Billboard">Billboard</option>
-            <option value="Baliho">Baliho</option>
-            <option value="Bando Jalan">Bando Jalan</option>
-            <option value="Neon Box">Neon Box</option>
-          </select>
+          <label for="lokasi">Nama Titik / Lokasi Jalan</label>
+          <input type="text" id="lokasi" placeholder="Contoh: Jl. S. Parman (Dekat Amira)" required>
         </div>
 
-        <div class="form-group">
-          <label for="jenisLampu">Jenis Lampu</label>
-          <select id="jenisLampu">
-            <option value="FL">FL (Front Light / Luar)</option>
-            <option value="BL">BL (Back Light / Dalam)</option>
-            <option value="NONE">Tanpa Lampu</option>
-          </select>
-        </div>
-      </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="tipe">Tipe Sarana</label>
+            <select id="tipe">
+              <option value="Billboard">Billboard</option>
+              <option value="Baliho">Baliho</option>
+              <option value="Bando Jalan">Bando Jalan</option>
+              <option value="Neon Box">Neon Box</option>
+            </select>
+          </div>
 
-      <div class="form-group">
-        <label for="jumlahLampu">Jumlah Titik Lampu</label>
-        <input type="number" id="jumlahLampu" placeholder="Jumlah titik lampu FL" min="0">
-      </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label for="tanggalPengecekan">Tanggal Catat</label>
-          <input type="date" id="tanggalPengecekan" required>
-        </div>
-
-        <div class="form-group">
-          <label for="sisaKwh">Sisa Token (kWh)</label>
-          <div class="input-ocr-group">
-            <input type="number" step="any" id="sisaKwh" placeholder="Contoh: 10542" required>
-            <button type="button" id="btn-scan-form" class="btn-ocr-scan" title="Scan Kamera Meteran">📷 OCR</button>
+          <div class="form-group">
+            <label for="jenisLampu">Jenis Lampu</label>
+            <select id="jenisLampu">
+              <option value="FL">FL (Front Light / Luar)</option>
+              <option value="BL">BL (Back Light / Dalam)</option>
+              <option value="NONE">Tanpa Lampu</option>
+            </select>
           </div>
         </div>
-      </div>
 
-      <div class="form-group">
-        <label for="input-koordinat">Titik Koordinat (Bisa Otomatis atau Ketik/Paste)</label>
-        <div class="gps-input-group">
-          <input type="text" id="input-koordinat" placeholder="Contoh: 3.797733°S, 102.266305°E">
-          <button type="button" id="btn-ambil-gps" class="btn-gps-auto">GPS Otomatis</button>
+        <div class="form-group">
+          <label for="jumlahLampu">Jumlah Titik Lampu</label>
+          <input type="number" id="jumlahLampu" placeholder="Jumlah titik lampu FL" min="0">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="tanggalPengecekan">Tanggal Catat</label>
+            <input type="date" id="tanggalPengecekan" required>
+          </div>
+
+          <div class="form-group">
+            <label for="sisaKwh">Sisa Token (kWh)</label>
+            <div class="input-ocr-group">
+              <input type="number" step="any" id="sisaKwh" placeholder="Contoh: 10542" required>
+              <button type="button" id="btn-scan-form" class="btn-ocr-scan" title="Scan Kamera Meteran">📷 OCR</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="input-koordinat">Titik Koordinat (Bisa Otomatis atau Ketik/Paste)</label>
+          <div class="gps-input-group">
+            <input type="text" id="input-koordinat" placeholder="Contoh: 3.797733°S, 102.266305°E">
+            <button type="button" id="btn-ambil-gps" class="btn-gps-auto">GPS Otomatis</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="fotoSarana">Dokumentasi Foto (Pilih dari Galeri)</label>
+          <input type="file" id="fotoSarana" accept="image/jpeg,image/png,image/webp" multiple>
+        </div>
+
+        <button type="submit" class="btn-submit">Simpan Sarana</button>
+      </form>
+
+      <div class="kontrol-pencarian">
+        <h2 class="judul-bagian">Daftar Sarana</h2>
+        <input type="text" id="input-cari" class="input-cari-jalan" placeholder="Cari nama jalan atau tipe sarana...">
+        <div class="filter-tabs">
+          <button class="tab-filter active" data-filter="semua">Semua</button>
+          <button class="tab-filter" data-filter="perlu-isi">Perlu Diisi</button>
+          <button class="tab-filter" data-filter="aman">Aman</button>
         </div>
       </div>
 
-      <div class="form-group">
-        <label for="fotoSarana">Dokumentasi Foto (Pilih dari Galeri)</label>
-        <input type="file" id="fotoSarana" accept="image/jpeg,image/png,image/webp" multiple>
+      <div id="daftar-sarana"></div>
+    </main>
+
+    <!-- TAB VIEW 2: PETA INTERAKTIF SATELIT GIS -->
+    <main id="view-peta" class="tab-view">
+      <div class="map-overlay-box">
+        <span style="font-weight:700; color:#fff;">Radar Tiang Kota Bengkulu</span>
+        <div class="map-legend">
+          <span class="leg-item"><span class="leg-dot" style="background:#ef4444;"></span>Kritis</span>
+          <span class="leg-item"><span class="leg-dot" style="background:#f59e0b;"></span>Waspada</span>
+          <span class="leg-item"><span class="leg-dot" style="background:#10b981;"></span>Aman</span>
+        </div>
       </div>
+      <div id="peta-gis"></div>
+    </main>
 
-      <button type="submit" class="btn-submit">Simpan Sarana</button>
-    </form>
-
-    <div class="kontrol-pencarian">
-      <h2 class="judul-bagian">Daftar Sarana</h2>
-      <input type="text" id="input-cari" class="input-cari-jalan" placeholder="Cari nama jalan atau tipe sarana...">
-      <div class="filter-tabs">
-        <button class="tab-filter active" data-filter="semua">Semua</button>
-        <button class="tab-filter" data-filter="perlu-isi">Perlu Diisi</button>
-        <button class="tab-filter" data-filter="aman">Aman</button>
+    <!-- TAB VIEW 3: MISI & OPERASIONAL (SIAP UNTUK TAHAP 2) -->
+    <main id="view-misi" class="tab-view">
+      <div class="state-kosong" style="background:var(--surface); border:1px solid var(--border); padding:20px; text-align:left;">
+        <h3 style="color:#60a5fa; margin-bottom:8px;">📋 Modul Operasional PT DEVIS JAYA</h3>
+        <p style="font-size:0.85rem; color:#cbd5e1; line-height:1.5;">
+          Tab ini disiapkan untuk <strong>Daily Mission Control</strong> (Jadwal Foto BYD Senin & HMS siklus 1-4, 10-14, 20-24), <strong>Smart Fuel Burn-Down</strong> (BBM Rp50.000 Kamis-Rabu), dan <strong>Smart Stamp Camera</strong> (Foto 3 Jarak).
+        </p>
       </div>
-    </div>
-
-    <div id="daftar-sarana"></div>
+    </main>
   </div>
 
   <!-- Modal Update Token -->
@@ -143,11 +178,6 @@
           </div>
         </div>
 
-        <div class="form-group">
-          <label for="modalBeliKwh">Jumlah Beli Token (Opsional - Jika Isi Ulang)</label>
-          <input type="number" step="any" id="modalBeliKwh" placeholder="Kosongkan jika hanya cek sisa biasa">
-        </div>
-
         <div style="display: flex; gap: 8px; margin-top: 14px;">
           <button type="button" id="btn-tutup-modal" class="btn-hapus">Batal</button>
           <button type="submit" class="btn-submit">Simpan</button>
@@ -156,14 +186,12 @@
     </div>
   </div>
 
-  <!-- Modal Estimasi Anggaran Biaya Token -->
+  <!-- Modal Estimasi Anggaran -->
   <div id="modal-anggaran" class="modal-backdrop">
     <div class="modal-konten">
       <h3 style="margin-bottom: 6px;">Estimasi Anggaran Token</h3>
-      <p style="font-size:0.8rem; color:#94a3b8; margin-bottom:12px;">Perhitungan kebutuhan dana pengisian sarana kritis untuk 30 hari ke depan.</p>
-      
+      <p style="font-size:0.8rem; color:#94a3b8; margin-bottom:12px;">Perhitungan kebutuhan dana pengisian sarana kritis ke PLN.</p>
       <div id="konten-rincian-anggaran"></div>
-
       <div style="margin-top:16px;">
         <button type="button" id="btn-tutup-anggaran" class="btn-submit">Tutup</button>
       </div>
@@ -174,13 +202,11 @@
   <div id="modal-edit" class="modal-backdrop">
     <div class="modal-konten">
       <h3 style="margin-bottom: 12px;">Edit Data Sarana</h3>
-
       <form id="form-edit">
         <div class="form-group">
           <label for="edit-lokasi">Nama Titik / Lokasi Jalan</label>
           <input type="text" id="edit-lokasi" required>
         </div>
-
         <div class="form-row">
           <div class="form-group">
             <label for="edit-tipe">Tipe Sarana</label>
@@ -191,7 +217,6 @@
               <option value="Neon Box">Neon Box</option>
             </select>
           </div>
-
           <div class="form-group">
             <label for="edit-jenisLampu">Jenis Lampu</label>
             <select id="edit-jenisLampu">
@@ -201,17 +226,14 @@
             </select>
           </div>
         </div>
-
         <div class="form-group">
           <label for="edit-jumlahLampu">Jumlah Titik Lampu</label>
           <input type="number" id="edit-jumlahLampu" min="0">
         </div>
-
         <div class="form-group">
           <label for="edit-koordinat">Koordinat (Bisa Paste: 3.797733°S, 102.266305°E)</label>
           <input type="text" id="edit-koordinat">
         </div>
-
         <div style="display: flex; gap: 8px; margin-top: 14px;">
           <button type="button" id="btn-tutup-edit" class="btn-hapus">Batal</button>
           <button type="submit" class="btn-submit">Simpan Perubahan</button>
@@ -225,15 +247,20 @@
     <img id="img-zoom" class="modal-foto-isi" alt="Zoom Foto">
   </div>
 
+  <!-- Bilah Navigasi Bawah 3 Menu -->
   <nav class="nav-bottom">
-    <a href="#" class="nav-item active">
-      <span>📍</span>
+    <button type="button" class="nav-item active" data-tab="view-sarana">
+      <span style="font-size:1.1rem;">📍</span>
       <span>Sarana</span>
-    </a>
-    <a href="#" class="nav-item" onclick="alert('Navigasi utama aktif.')">
-      <span>⭐</span>
-      <span>Fitur</span>
-    </a>
+    </button>
+    <button type="button" class="nav-item" data-tab="view-peta">
+      <span style="font-size:1.1rem;">🗺️</span>
+      <span>Peta Radar</span>
+    </button>
+    <button type="button" class="nav-item" data-tab="view-misi">
+      <span style="font-size:1.1rem;">📋</span>
+      <span>Misi Kerja</span>
+    </button>
   </nav>
 
   <script type="module" src="js/app.js"></script>

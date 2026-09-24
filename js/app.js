@@ -7,6 +7,15 @@ import { hitungJarakKm, urutkanRuteTerdekat } from './patrol-route.js';
 import { hitungEstimasiBiaya } from './budget-calc.js';
 import { cetakDokumenPdfResmi } from './pdf-report.js';
 import { scanAngkaMeteranDariFile } from './ocr.js';
+import { inisialisasiPeta, perbaruiPinPeta, perbaruiLokasiUserDiPeta, perbaikiUkuranPeta } from './map.js';
+import { pasangAlarmTokenHabis } from './calendar-sync.js';
+
+// Registrasi Service Worker PWA
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch((err) => console.log('SW Gagal:', err));
+  });
+}
 
 const form = document.getElementById('form-sarana');
 const containerDaftar = document.getElementById('daftar-sarana');
@@ -21,24 +30,23 @@ const btnEksporWa = document.getElementById('btn-ekspor-wa');
 const btnToolRute = document.getElementById('btn-tool-rute');
 const btnToolAnggaran = document.getElementById('btn-tool-anggaran');
 const btnToolPdf = document.getElementById('btn-tool-pdf');
+const btnToolKalender = document.getElementById('btn-tool-kalender');
 
-// Elemen OCR
+// OCR
 const inputFileOcr = document.getElementById('input-file-ocr');
 const btnScanForm = document.getElementById('btn-scan-form');
 const btnScanModal = document.getElementById('btn-scan-modal');
 let targetInputOcr = null;
 
-// Modal Update
+// Modal
 const modalUpdate = document.getElementById('modal-update');
 const formUpdate = document.getElementById('form-update');
 const btnTutupModal = document.getElementById('btn-tutup-modal');
 
-// Modal Anggaran
 const modalAnggaran = document.getElementById('modal-anggaran');
 const kontenRincianAnggaran = document.getElementById('konten-rincian-anggaran');
 const btnTutupAnggaran = document.getElementById('btn-tutup-anggaran');
 
-// Modal Edit Sarana
 const modalEdit = document.getElementById('modal-edit');
 const formEdit = document.getElementById('form-edit');
 const btnTutupEdit = document.getElementById('btn-tutup-edit');
@@ -58,6 +66,32 @@ let modeRuteAktif = false;
 const tglHariIni = new Date().toISOString().split('T')[0];
 document.getElementById('tanggalPengecekan').value = tglHariIni;
 document.getElementById('modalTanggal').value = tglHariIni;
+
+// Navigasi Bawah Tab View
+const navButtons = document.querySelectorAll('.nav-bottom .nav-item');
+const tabViews = document.querySelectorAll('.tab-view');
+
+navButtons.forEach((btn) => {
+  btn.addEventListener('click', () => {
+    navButtons.forEach(b => b.classList.remove('active'));
+    tabViews.forEach(v => v.classList.remove('active'));
+
+    btn.classList.add('active');
+    const tabTarget = btn.getAttribute('data-tab');
+    const viewTarget = document.getElementById(tabTarget);
+    if (viewTarget) viewTarget.classList.add('active');
+
+    // Jika tab Peta dibuka, inisialisasi dan sesuaikan ukuran petanya
+    if (tabTarget === 'view-peta') {
+      inisialisasiPeta();
+      perbaruiPinPeta(dataSarana, hitungPrediksiHabis);
+      if (posisiUserSekarang) {
+        perbaruiLokasiUserDiPeta(posisiUserSekarang.lat, posisiUserSekarang.lng);
+      }
+      perbaikiUkuranPeta();
+    }
+  });
+});
 
 selectJenisLampu.addEventListener('change', () => {
   if (selectJenisLampu.value === 'FL') {
@@ -100,16 +134,17 @@ btnToolRute.addEventListener('click', async () => {
     return;
   }
 
-  btnToolRute.innerHTML = `<span>⏳</span><span>Mencari GPS...</span>`;
+  btnToolRute.innerHTML = `<span>⏳</span><span>GPS...</span>`;
   try {
     posisiUserSekarang = await dapatkanKoordinatGPS();
     modeRuteAktif = true;
     btnToolRute.classList.add('active-route');
     btnToolRute.innerHTML = `<span>🧭</span><span>Rute Aktif</span>`;
     renderData();
+    perbaruiLokasiUserDiPeta(posisiUserSekarang.lat, posisiUserSekarang.lng);
   } catch (err) {
-    alert('Gagal membaca lokasi: ' + err.message);
-    btnToolRute.innerHTML = `<span>🧭</span><span>Rute Patroli</span>`;
+    alert('Gagal membaca GPS: ' + err.message);
+    btnToolRute.innerHTML = `<span>🧭</span><span>Rute Urut</span>`;
   }
 });
 
@@ -153,6 +188,11 @@ btnToolPdf.addEventListener('click', () => {
   }
   const hasilAnggaran = hitungEstimasiBiaya(dataSarana, hitungPrediksiHabis);
   cetakDokumenPdfResmi(dataSarana, hitungPrediksiHabis, hasilAnggaran);
+});
+
+// Fitur Sinkron Kalender
+btnToolKalender.addEventListener('click', () => {
+  pasangAlarmTokenHabis(dataSarana, hitungPrediksiHabis);
 });
 
 btnScanForm.addEventListener('click', () => {
@@ -274,7 +314,6 @@ function renderData() {
     }
     blokRiwayat += `</div>`;
 
-    // Panel Riwayat dengan Tombol Hapus Spesifik
     const riwayatUrutTerbalik = [...item.riwayatToken].sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
     const barisHistoriHtml = riwayatUrutTerbalik.map((h) => `
       <div class="baris-histori-item" style="display:flex; justify-content:space-between; align-items:center; padding:3px 0;">
@@ -284,9 +323,9 @@ function renderData() {
     `).join('');
 
     const blokHistoriLengkap = `
-      <details class="panel-histori-token" open>
+      <details class="panel-histori-token">
         <summary style="cursor:pointer; color:#60a5fa; font-weight:600;">Riwayat Pencatatan (${item.riwayatToken.length} Catatan)</summary>
-        <div class="daftar-histori-box" style="margin-top:6px; border-top:1px dashed #334155; padding-top:4px;">
+        <div class="daftar-histori-box">
           ${barisHistoriHtml}
         </div>
       </details>
@@ -363,7 +402,6 @@ function renderData() {
     containerDaftar.appendChild(kartu);
   });
 
-  // Tombol Hapus Entri Riwayat Tunggal (Untuk koreksi salah ketik)
   document.querySelectorAll('.btn-hapus-entri').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
