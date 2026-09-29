@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sarana-cache-v10';
+const CACHE_NAME = 'sarana-cache-v12';
 const ASSETS = [
   './',
   './index.html',
@@ -22,9 +22,7 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
-  );
+  e.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
   self.skipWaiting();
 });
 
@@ -42,10 +40,9 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-  if (e.request.url.includes('kvdb.io')) {
+  // Jangan pernah cache URL database Firebase agar data selalu live 100%
+  if (e.request.url.includes('firebaseio.com')) {
     return e.respondWith(fetch(e.request));
   }
-  e.respondWith(
-    fetch(e.request).catch(() => caches.match(e.request))
-  );
+  e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
 });

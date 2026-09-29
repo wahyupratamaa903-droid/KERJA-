@@ -1,1 +1,2 @@
-export const CLOUD_API_URL = "https://kvdb.io/email required: set email=user@example.com when creating the bucket/sarana_devis";
+// js/config-db.js - Konfigurasi Resmi Firebase Realtime Database
+export const CLOUD_API_URL = "https://sarana-devis-default-rtdb.firebaseio.com/sarana.json";
