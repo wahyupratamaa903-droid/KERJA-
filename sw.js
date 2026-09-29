@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sarana-cache-v9';
+const CACHE_NAME = 'sarana-cache-v10';
 const ASSETS = [
   './',
   './index.html',
