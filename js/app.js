@@ -33,7 +33,7 @@ const btnToolAnggaran = document.getElementById('btn-tool-anggaran');
 const btnToolPdf = document.getElementById('btn-tool-pdf');
 const btnToolKalender = document.getElementById('btn-tool-kalender');
 
-// Status Cloud & Refresh
+// Status Cloud
 const labelCloudStatus = document.getElementById('label-cloud-status');
 const btnRefreshCloud = document.getElementById('btn-refresh-cloud');
 
@@ -67,7 +67,6 @@ let indexSaranaTerpilih = null;
 let statusFilterAktif = 'semua';
 let posisiUserSekarang = null;
 let modeRuteAktif = false;
-let isPetugas = true;
 
 const tglHariIni = new Date().toISOString().split('T')[0];
 document.getElementById('tanggalPengecekan').value = tglHariIni;
@@ -261,39 +260,53 @@ btnEksporWa.addEventListener('click', async () => {
   }
 });
 
-// FUNGSI SIMPAN DATA GANDA (LOKAL HP + SERVER CLOUD LANGSUNG)
+// SIMPAN & SINKRON CLOUD INSTAN
 async function simpanPerubahanData() {
   localStorage.setItem('sarana-kerja-v3', JSON.stringify(dataSarana));
   renderData();
 
-  labelCloudStatus.textContent = "⏳ Menyinkronkan ke Cloud...";
-  labelCloudStatus.style.color = "#f59e0b";
+  if (labelCloudStatus) {
+    labelCloudStatus.textContent = "⏳ Menyinkronkan ke Cloud...";
+    labelCloudStatus.style.color = "#f59e0b";
+  }
 
   try {
     await kirimDataKeServer(dataSarana);
-    labelCloudStatus.textContent = `🟢 Cloud Live: ${dataSarana.length} Sarana Tersinkron`;
-    labelCloudStatus.style.color = "#10b981";
+    if (labelCloudStatus) {
+      labelCloudStatus.textContent = `🟢 Cloud Live: ${dataSarana.length} Sarana`;
+      labelCloudStatus.style.color = "#10b981";
+    }
   } catch (err) {
-    labelCloudStatus.textContent = "⚠️ Tersimpan di HP (Cloud Gagal)";
-    labelCloudStatus.style.color = "#ef4444";
+    if (labelCloudStatus) {
+      labelCloudStatus.textContent = "⚠️ Tersimpan di HP (Cloud Tertunda)";
+      labelCloudStatus.style.color = "#ef4444";
+    }
   }
 }
 
-// Tombol Refresh Manual
+// Refresh Data Cloud Manual
 btnRefreshCloud.addEventListener('click', async () => {
   btnRefreshCloud.textContent = "Memuat...";
   btnRefreshCloud.disabled = true;
   try {
     const dataTerbaru = await ambilDataDariServer();
     if (dataTerbaru && dataTerbaru.length > 0) {
-      dataSarana = dataTerbaru;
+      // Pertahankan foto lokal jika ada
+      const mapFoto = {};
+      dataSarana.forEach(s => { if (s.fotos) mapFoto[s.id] = s.fotos; });
+
+      dataSarana = dataTerbaru.map(s => ({
+        ...s,
+        fotos: mapFoto[s.id] || []
+      }));
+
       localStorage.setItem('sarana-kerja-v3', JSON.stringify(dataSarana));
       renderData();
       labelCloudStatus.textContent = `🟢 Cloud Live: ${dataSarana.length} Sarana`;
       labelCloudStatus.style.color = "#10b981";
-      alert("✅ Data sarana live berhasil diperbarui dari server!");
+      alert("✅ Data sarana live berhasil diperbarui dari Cloud!");
     } else {
-      alert("Data di server masih sama.");
+      alert("Belum ada data baru di server.");
     }
   } catch (err) {
     alert("Gagal memuat dari server: " + err.message);
@@ -375,7 +388,7 @@ function renderData() {
     const barisHistoriHtml = riwayatUrutTerbalik.map((h) => `
       <div class="baris-histori-item" style="display:flex; justify-content:space-between; align-items:center; padding:3px 0;">
         <span>📅 ${h.tanggal}: <strong>${h.kwh.toLocaleString('id-ID')} kWh</strong></span>
-        ${(isPetugas && item.riwayatToken.length > 1) ? `<button class="btn-hapus-entri" data-sarana-id="${item.id}" data-tgl="${h.tanggal}" data-kwh="${h.kwh}" style="background:transparent; border:none; color:#ef4444; cursor:pointer; font-size:0.8rem; padding:0 4px;" title="Hapus catatan salah ini">✕</button>` : ''}
+        ${item.riwayatToken.length > 1 ? `<button class="btn-hapus-entri" data-sarana-id="${item.id}" data-tgl="${h.tanggal}" data-kwh="${h.kwh}" style="background:transparent; border:none; color:#ef4444; cursor:pointer; font-size:0.8rem; padding:0 4px;" title="Hapus catatan salah ini">✕</button>` : ''}
       </div>
     `).join('');
 
@@ -429,17 +442,6 @@ function renderData() {
       `;
     }
 
-    let footerHtml = '';
-    if (isPetugas) {
-      footerHtml = `
-        <div class="kartu-footer">
-          <button class="btn-update" data-index="${originalIndex}">+ Catat Token</button>
-          <button class="btn-edit" data-index="${originalIndex}">Edit</button>
-          <button class="btn-hapus" data-index="${originalIndex}">Hapus</button>
-        </div>
-      `;
-    }
-
     kartu.innerHTML = `
       <div class="kartu-header">
         <div>
@@ -460,18 +462,20 @@ function renderData() {
         ${galeriHtml}
       </div>
 
-      ${footerHtml}
+      <div class="kartu-footer">
+        <button class="btn-update" data-index="${originalIndex}">+ Catat Token</button>
+        <button class="btn-edit" data-index="${originalIndex}">Edit</button>
+        <button class="btn-hapus" data-index="${originalIndex}">Hapus</button>
+      </div>
     `;
 
     containerDaftar.appendChild(kartu);
   });
 
-  if (isPetugas) {
-    pasangEventTombolPetugas();
-  }
+  pasangEventTombol();
 }
 
-function pasangEventTombolPetugas() {
+function pasangEventTombol() {
   document.querySelectorAll('.btn-hapus-entri').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -552,7 +556,7 @@ tabFilters.forEach(tab => {
   });
 });
 
-// FORM TAMBAH SARANA (LANGSUNG AUTO-SYNC CLOUD)
+// FORM TAMBAH SARANA (LANGSUNG AUTO-SYNC KE CLOUD)
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const btnSubmit = form.querySelector('button[type="submit"]');
@@ -593,7 +597,7 @@ form.addEventListener('submit', async (e) => {
   btnSubmit.textContent = 'Simpan Sarana';
 });
 
-// FORM EDIT SARANA (LANGSUNG AUTO-SYNC CLOUD)
+// FORM EDIT SARANA
 formEdit.addEventListener('submit', async (e) => {
   e.preventDefault();
   if (indexSaranaTerpilih === null) return;
@@ -609,7 +613,7 @@ formEdit.addEventListener('submit', async (e) => {
   await simpanPerubahanData();
 });
 
-// FORM CATAT TOKEN BARU (LANGSUNG AUTO-SYNC CLOUD)
+// FORM CATAT TOKEN BARU
 formUpdate.addEventListener('submit', async (e) => {
   e.preventDefault();
   if (indexSaranaTerpilih === null) return;
@@ -694,36 +698,49 @@ document.getElementById('form-catat-bbm').addEventListener('submit', (e) => {
   }
 });
 
-// INISIALISASI CERDAS: TARIK SERVER CLOUD OTOMATIS
+// INISIALISASI APLIKASI
 async function inisialisasiAplikasi() {
   inisialisasiPenampilFoto();
 
   const dataLokal = JSON.parse(localStorage.getItem('sarana-kerja-v3') || '[]');
 
-  // Prioritaskan tampilkan data lokal terlebih dahulu agar tidak ada jeda layar kosong
+  // Tampilkan data lokal terlebih dahulu jika ada
   if (dataLokal.length > 0) {
     dataSarana = dataLokal;
     renderData();
   }
 
-  // Tarik data live paling mutakhir dari Server Cloud di latar belakang
+  // Tarik data paling mutakhir dari Server Cloud
   try {
     const dataServer = await ambilDataDariServer();
     if (dataServer && dataServer.length > 0) {
-      dataSarana = dataServer;
+      // Pertahankan foto lokal jika ada
+      const mapFoto = {};
+      dataLokal.forEach(s => { if (s.fotos) mapFoto[s.id] = s.fotos; });
+
+      dataSarana = dataServer.map(s => ({
+        ...s,
+        fotos: mapFoto[s.id] || []
+      }));
+
       localStorage.setItem('sarana-kerja-v3', JSON.stringify(dataSarana));
       renderData();
-      labelCloudStatus.textContent = `🟢 Cloud Live: ${dataSarana.length} Sarana Terhubung`;
-      labelCloudStatus.style.color = "#10b981";
+      if (labelCloudStatus) {
+        labelCloudStatus.textContent = `🟢 Cloud Live: ${dataSarana.length} Sarana Terhubung`;
+        labelCloudStatus.style.color = "#10b981";
+      }
     } else if (dataLokal.length > 0) {
-      // Jika server masih kosong, unggah data lokal ke server secara otomatis
       await kirimDataKeServer(dataLokal);
-      labelCloudStatus.textContent = `🟢 Cloud Live: ${dataLokal.length} Sarana Terhubung`;
-      labelCloudStatus.style.color = "#10b981";
+      if (labelCloudStatus) {
+        labelCloudStatus.textContent = `🟢 Cloud Live: ${dataLokal.length} Sarana Terhubung`;
+        labelCloudStatus.style.color = "#10b981";
+      }
     }
   } catch (err) {
-    labelCloudStatus.textContent = "⚠️ Mode Lokal HP (Offline)";
-    labelCloudStatus.style.color = "#f59e0b";
+    if (labelCloudStatus) {
+      labelCloudStatus.textContent = "⚠️ Mode Lokal HP (Offline)";
+      labelCloudStatus.style.color = "#f59e0b";
+    }
   }
 }
 

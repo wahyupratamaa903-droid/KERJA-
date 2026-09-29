@@ -1,21 +1,17 @@
-// js/cloud-sync.js - Modul Sinkronisasi Real-Time Cloud
 import { CLOUD_API_URL } from './config-db.js';
 
 export async function kirimDataKeServer(daftarSarana) {
   try {
-    // Bersihkan foto berat agar pengiriman data kilat (di bawah 1 detik)
-    const dataKirim = daftarSarana.map(s => {
-      const salin = { ...s };
-      if (salin.fotos && salin.fotos.length > 2) {
-        salin.fotos = salin.fotos.slice(0, 2);
-      }
-      return salin;
+    // Pisahkan foto berukuran megabyte agar paket data sangat kecil (~3 KB) dan kilat
+    const dataRingan = daftarSarana.map(s => {
+      const { fotos, ...dataBersih } = s;
+      return dataBersih;
     });
 
     const respon = await fetch(CLOUD_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(dataKirim)
+      body: JSON.stringify(dataRingan)
     });
 
     if (!respon.ok) throw new Error(`HTTP Error: ${respon.status}`);
@@ -28,7 +24,7 @@ export async function kirimDataKeServer(daftarSarana) {
 
 export async function ambilDataDariServer() {
   try {
-    const respon = await fetch(`${CLOUD_API_URL}?t=${Date.now()}`); // Cegah cache browser
+    const respon = await fetch(`${CLOUD_API_URL}?t=${Date.now()}`);
     if (!respon.ok) {
       if (respon.status === 404) return [];
       throw new Error(`HTTP Error: ${respon.status}`);
