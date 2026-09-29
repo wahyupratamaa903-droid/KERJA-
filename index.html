@@ -20,31 +20,16 @@
       <p>PT DEVIS JAYA • Bengkulu</p>
     </header>
 
-    <!-- BANNER KHUSUS PENONTON / TAMU -->
-    <div id="banner-tamu" class="banner-mode-tamu" style="display: none;">
-      <div>
-        <strong>🌐 Mode Pantau Publik</strong><br>
-        <span id="label-tgl-siaran">Memuat data siaran...</span>
-      </div>
-      <button type="button" id="btn-login-petugas" style="background:#047857; border:1px solid #10b981; color:#fff; font-size:0.7rem; padding:4px 8px; border-radius:6px; cursor:pointer;">
-        Mode Petugas
+    <!-- BAR STATUS CLOUD LIVE OTOMATIS -->
+    <div id="bar-status-cloud" style="background:#0f172a; border:1px solid #1e293b; border-radius:8px; padding:8px 12px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; font-size:0.75rem;">
+      <span id="label-cloud-status" style="color:#10b981; font-weight:600;">🟢 Cloud Live: Terhubung</span>
+      <button type="button" id="btn-refresh-cloud" style="background:#1e293b; border:1px solid #334155; color:#93c5fd; padding:3px 8px; border-radius:6px; cursor:pointer; font-size:0.7rem;">
+        🔄 Refresh Data
       </button>
     </div>
 
     <!-- TAB VIEW 1: DAFTAR SARANA & PATROLI -->
     <main id="view-sarana" class="tab-view active">
-      <!-- SAKELAR SIARAN CLOUD (KHUSUS HP PETUGAS) -->
-      <section id="panel-sakelar-siar" class="panel-siar-cloud">
-        <div class="siar-info">
-          <span class="siar-title">📡 Siaran Publik (Live Cloud)</span>
-          <span id="siar-status-text" class="siar-desc">Matang: Data hanya tersimpan di HP ini</span>
-        </div>
-        <label class="switch-toggle">
-          <input type="checkbox" id="toggle-siar-cloud">
-          <span class="slider"></span>
-        </label>
-      </section>
-
       <section class="panel-statistik">
         <div class="stat-item">
           <span class="stat-angka" id="stat-total">0</span>
@@ -79,7 +64,7 @@
 
       <input type="file" id="input-file-ocr" accept="image/*" capture="environment" style="display:none;">
 
-      <!-- FORM CATAT TITIK (OTOMATIS HILANG DI HP ORANG LAIN) -->
+      <!-- FORM CATAT TITIK (OTOMATIS DISEMBUNYIKAN UNTUK PENONTON/TAMU) -->
       <form id="form-sarana" class="form-box">
         <h2 class="form-title">Catat Titik Sarana Baru</h2>
 

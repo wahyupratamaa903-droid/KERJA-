@@ -10,7 +10,7 @@ import { scanAngkaMeteranDariFile } from './ocr.js';
 import { inisialisasiPeta, perbaruiPinPeta, perbaruiLokasiUserDiPeta, perbaikiUkuranPeta } from './map.js';
 import { pasangAlarmTokenHabis } from './calendar-sync.js';
 import { dapatkanMisiHariIni, getStatusBBM, catatIsiBbm } from './mission.js';
-import { siarkanDataKeCloud, ambilDataSiaranCloud } from './db.js';
+import { kirimDataKeServer, ambilDataDariServer } from './cloud-sync.js';
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -33,6 +33,10 @@ const btnToolAnggaran = document.getElementById('btn-tool-anggaran');
 const btnToolPdf = document.getElementById('btn-tool-pdf');
 const btnToolKalender = document.getElementById('btn-tool-kalender');
 
+// Status Cloud & Refresh
+const labelCloudStatus = document.getElementById('label-cloud-status');
+const btnRefreshCloud = document.getElementById('btn-refresh-cloud');
+
 // OCR
 const inputFileOcr = document.getElementById('input-file-ocr');
 const btnScanForm = document.getElementById('btn-scan-form');
@@ -54,14 +58,6 @@ const btnTutupEdit = document.getElementById('btn-tutup-edit');
 const editJenisLampu = document.getElementById('edit-jenisLampu');
 const editJumlahLampu = document.getElementById('edit-jumlahLampu');
 
-// Elemen Sakelar Siaran & Banner Tamu
-const toggleSiar = document.getElementById('toggle-siar-cloud');
-const siarStatusText = document.getElementById('siar-status-text');
-const panelSakelar = document.getElementById('panel-sakelar-siar');
-const bannerTamu = document.getElementById('banner-tamu');
-const labelTglSiaran = document.getElementById('label-tgl-siaran');
-const btnLoginPetugas = document.getElementById('btn-login-petugas');
-
 // Pencarian & Filter
 const inputCari = document.getElementById('input-cari');
 const tabFilters = document.querySelectorAll('.tab-filter');
@@ -71,7 +67,7 @@ let indexSaranaTerpilih = null;
 let statusFilterAktif = 'semua';
 let posisiUserSekarang = null;
 let modeRuteAktif = false;
-let isModeTamu = false;
+let isPetugas = true;
 
 const tglHariIni = new Date().toISOString().split('T')[0];
 document.getElementById('tanggalPengecekan').value = tglHariIni;
@@ -265,37 +261,45 @@ btnEksporWa.addEventListener('click', async () => {
   }
 });
 
-// LOGIKA SAKELAR SIARAN CLOUD (LIVE TOGGLE)
-toggleSiar.addEventListener('change', async () => {
-  if (toggleSiar.checked) {
-    siarStatusText.textContent = "Mengunggah data ke Cloud...";
-    toggleSiar.disabled = true;
-    try {
-      const meta = await siarkanDataKeCloud(dataSarana);
-      localStorage.setItem('status_siar_aktif', 'true');
-      siarStatusText.textContent = `🟢 Aktif: ${dataSarana.length} sarana disiarkan`;
-      alert("✅ Seluruh data sarana berhasil disiarkan! Siapa pun yang membuka web sekarang dapat melihat seluruh data secara langsung.");
-    } catch (err) {
-      alert("Gagal menyiarkan: " + err.message);
-      toggleSiar.checked = false;
-      siarStatusText.textContent = "Gagal menyiarkan";
-    } finally {
-      toggleSiar.disabled = false;
-    }
-  } else {
-    localStorage.removeItem('status_siar_aktif');
-    siarStatusText.textContent = "Matang: Data hanya tersimpan di HP ini";
-  }
-});
+// FUNGSI SIMPAN DATA GANDA (LOKAL HP + SERVER CLOUD LANGSUNG)
+async function simpanPerubahanData() {
+  localStorage.setItem('sarana-kerja-v3', JSON.stringify(dataSarana));
+  renderData();
 
-// Tombol Masuk Mode Petugas (Jika membuka dari perangkat baru)
-btnLoginPetugas.addEventListener('click', () => {
-  const pin = prompt("Masukkan PIN Petugas untuk mengaktifkan mode edit:");
-  if (pin === "2026" || pin === "admin") {
-    localStorage.setItem('mode_petugas', 'admin');
-    location.reload();
-  } else {
-    alert("PIN salah.");
+  labelCloudStatus.textContent = "⏳ Menyinkronkan ke Cloud...";
+  labelCloudStatus.style.color = "#f59e0b";
+
+  try {
+    await kirimDataKeServer(dataSarana);
+    labelCloudStatus.textContent = `🟢 Cloud Live: ${dataSarana.length} Sarana Tersinkron`;
+    labelCloudStatus.style.color = "#10b981";
+  } catch (err) {
+    labelCloudStatus.textContent = "⚠️ Tersimpan di HP (Cloud Gagal)";
+    labelCloudStatus.style.color = "#ef4444";
+  }
+}
+
+// Tombol Refresh Manual
+btnRefreshCloud.addEventListener('click', async () => {
+  btnRefreshCloud.textContent = "Memuat...";
+  btnRefreshCloud.disabled = true;
+  try {
+    const dataTerbaru = await ambilDataDariServer();
+    if (dataTerbaru && dataTerbaru.length > 0) {
+      dataSarana = dataTerbaru;
+      localStorage.setItem('sarana-kerja-v3', JSON.stringify(dataSarana));
+      renderData();
+      labelCloudStatus.textContent = `🟢 Cloud Live: ${dataSarana.length} Sarana`;
+      labelCloudStatus.style.color = "#10b981";
+      alert("✅ Data sarana live berhasil diperbarui dari server!");
+    } else {
+      alert("Data di server masih sama.");
+    }
+  } catch (err) {
+    alert("Gagal memuat dari server: " + err.message);
+  } finally {
+    btnRefreshCloud.textContent = "🔄 Refresh Data";
+    btnRefreshCloud.disabled = false;
   }
 });
 
@@ -371,7 +375,7 @@ function renderData() {
     const barisHistoriHtml = riwayatUrutTerbalik.map((h) => `
       <div class="baris-histori-item" style="display:flex; justify-content:space-between; align-items:center; padding:3px 0;">
         <span>📅 ${h.tanggal}: <strong>${h.kwh.toLocaleString('id-ID')} kWh</strong></span>
-        ${(!isModeTamu && item.riwayatToken.length > 1) ? `<button class="btn-hapus-entri" data-sarana-id="${item.id}" data-tgl="${h.tanggal}" data-kwh="${h.kwh}" style="background:transparent; border:none; color:#ef4444; cursor:pointer; font-size:0.8rem; padding:0 4px;" title="Hapus catatan salah ini">✕</button>` : ''}
+        ${(isPetugas && item.riwayatToken.length > 1) ? `<button class="btn-hapus-entri" data-sarana-id="${item.id}" data-tgl="${h.tanggal}" data-kwh="${h.kwh}" style="background:transparent; border:none; color:#ef4444; cursor:pointer; font-size:0.8rem; padding:0 4px;" title="Hapus catatan salah ini">✕</button>` : ''}
       </div>
     `).join('');
 
@@ -425,9 +429,8 @@ function renderData() {
       `;
     }
 
-    // Tombol aksi hanya tampil untuk petugas
     let footerHtml = '';
-    if (!isModeTamu) {
+    if (isPetugas) {
       footerHtml = `
         <div class="kartu-footer">
           <button class="btn-update" data-index="${originalIndex}">+ Catat Token</button>
@@ -463,7 +466,7 @@ function renderData() {
     containerDaftar.appendChild(kartu);
   });
 
-  if (!isModeTamu) {
+  if (isPetugas) {
     pasangEventTombolPetugas();
   }
 }
@@ -483,8 +486,7 @@ function pasangEventTombolPetugas() {
         const idxEntri = sarana.riwayatToken.findIndex(r => r.tanggal === tgl && Number(r.kwh) === kwh);
         if (idxEntri !== -1) {
           sarana.riwayatToken.splice(idxEntri, 1);
-          localStorage.setItem('sarana-kerja-v3', JSON.stringify(dataSarana));
-          renderData();
+          simpanPerubahanData();
         }
       }
     });
@@ -534,8 +536,7 @@ function pasangEventTombolPetugas() {
       const targetSarana = dataSarana[idx];
       if (confirm(`Hapus sarana "${targetSarana.lokasi}"?`)) {
         dataSarana.splice(idx, 1);
-        localStorage.setItem('sarana-kerja-v3', JSON.stringify(dataSarana));
-        renderData();
+        simpanPerubahanData();
       }
     });
   });
@@ -551,6 +552,7 @@ tabFilters.forEach(tab => {
   });
 });
 
+// FORM TAMBAH SARANA (LANGSUNG AUTO-SYNC CLOUD)
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const btnSubmit = form.querySelector('button[type="submit"]');
@@ -582,17 +584,17 @@ form.addEventListener('submit', async (e) => {
   };
 
   dataSarana.unshift(saranaBaru);
-  localStorage.setItem('sarana-kerja-v3', JSON.stringify(dataSarana));
+  await simpanPerubahanData();
 
   form.reset();
   document.getElementById('tanggalPengecekan').value = tglHariIni;
   inputJumlahLampu.disabled = false;
   btnSubmit.disabled = false;
   btnSubmit.textContent = 'Simpan Sarana';
-  renderData();
 });
 
-formEdit.addEventListener('submit', (e) => {
+// FORM EDIT SARANA (LANGSUNG AUTO-SYNC CLOUD)
+formEdit.addEventListener('submit', async (e) => {
   e.preventDefault();
   if (indexSaranaTerpilih === null) return;
 
@@ -603,12 +605,12 @@ formEdit.addEventListener('submit', (e) => {
   sarana.jumlahLampu = sarana.jenisLampu === 'FL' ? Number(editJumlahLampu.value) : 0;
   sarana.koordinat = parsingKoordinatManual(document.getElementById('edit-koordinat').value);
 
-  localStorage.setItem('sarana-kerja-v3', JSON.stringify(dataSarana));
   modalEdit.style.display = 'none';
-  renderData();
+  await simpanPerubahanData();
 });
 
-formUpdate.addEventListener('submit', (e) => {
+// FORM CATAT TOKEN BARU (LANGSUNG AUTO-SYNC CLOUD)
+formUpdate.addEventListener('submit', async (e) => {
   e.preventDefault();
   if (indexSaranaTerpilih === null) return;
 
@@ -617,12 +619,11 @@ formUpdate.addEventListener('submit', (e) => {
   const sarana = dataSarana[indexSaranaTerpilih];
 
   sarana.riwayatToken.push({ tanggal: tgl, kwh });
-  localStorage.setItem('sarana-kerja-v3', JSON.stringify(dataSarana));
-
+  modalUpdate.style.display = 'none';
   formUpdate.reset();
   document.getElementById('modalTanggal').value = tglHariIni;
-  modalUpdate.style.display = 'none';
-  renderData();
+
+  await simpanPerubahanData();
 });
 
 btnTutupModal.addEventListener('click', () => { modalUpdate.style.display = 'none'; });
@@ -693,62 +694,36 @@ document.getElementById('form-catat-bbm').addEventListener('submit', (e) => {
   }
 });
 
-// INISIALISASI CERDAS: DETEKSI ADMIN / PENONTON (VIEWER)
+// INISIALISASI CERDAS: TARIK SERVER CLOUD OTOMATIS
 async function inisialisasiAplikasi() {
   inisialisasiPenampilFoto();
 
   const dataLokal = JSON.parse(localStorage.getItem('sarana-kerja-v3') || '[]');
-  const isExplicitAdmin = localStorage.getItem('mode_petugas') === 'admin';
 
-  // JIKA DI HP KAMU (ADA DATA LOKAL / ADMIN)
-  if (dataLokal.length > 0 || isExplicitAdmin) {
-    isModeTamu = false;
+  // Prioritaskan tampilkan data lokal terlebih dahulu agar tidak ada jeda layar kosong
+  if (dataLokal.length > 0) {
     dataSarana = dataLokal;
-    panelSakelar.style.display = 'flex';
-    form.style.display = 'block';
-    bannerTamu.style.display = 'none';
-
-    // Cek status toggle lokal
-    const siarAktif = localStorage.getItem('status_siar_aktif') === 'true';
-    toggleSiar.checked = siarAktif;
-    if (siarAktif) {
-      siarStatusText.textContent = `🟢 Aktif: ${dataSarana.length} sarana disiarkan`;
-    }
     renderData();
-  } 
-  // JIKA DIBUKA DI HP/LAPTOP ORANG LAIN (MODE TAMU / PENONTON)
-  else {
-    isModeTamu = true;
-    panelSakelar.style.display = 'none';
-    form.style.display = 'none'; // Sembunyikan form input agar tidak diubah tamu
-    bannerTamu.style.display = 'flex';
+  }
 
-    containerDaftar.innerHTML = `
-      <div class="state-kosong">
-        <p>Menghubungkan ke Siaran Live PT DEVIS JAYA...</p>
-      </div>
-    `;
-
-    try {
-      const dataCloud = await ambilDataSiaranCloud();
-      if (dataCloud.daftarSarana.length > 0) {
-        dataSarana = dataCloud.daftarSarana;
-        labelTglSiaran.textContent = `Pembaruan: ${new Date(dataCloud.infoMeta.waktuUpdate || Date.now()).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`;
-        renderData();
-      } else {
-        containerDaftar.innerHTML = `
-          <div class="state-kosong">
-            <p>Petugas lapangan belum mengaktifkan sakelar siaran publik.</p>
-          </div>
-        `;
-      }
-    } catch (err) {
-      containerDaftar.innerHTML = `
-        <div class="state-kosong">
-          <p>Gagal memuat siaran live: ${err.message}</p>
-        </div>
-      `;
+  // Tarik data live paling mutakhir dari Server Cloud di latar belakang
+  try {
+    const dataServer = await ambilDataDariServer();
+    if (dataServer && dataServer.length > 0) {
+      dataSarana = dataServer;
+      localStorage.setItem('sarana-kerja-v3', JSON.stringify(dataSarana));
+      renderData();
+      labelCloudStatus.textContent = `🟢 Cloud Live: ${dataSarana.length} Sarana Terhubung`;
+      labelCloudStatus.style.color = "#10b981";
+    } else if (dataLokal.length > 0) {
+      // Jika server masih kosong, unggah data lokal ke server secara otomatis
+      await kirimDataKeServer(dataLokal);
+      labelCloudStatus.textContent = `🟢 Cloud Live: ${dataLokal.length} Sarana Terhubung`;
+      labelCloudStatus.style.color = "#10b981";
     }
+  } catch (err) {
+    labelCloudStatus.textContent = "⚠️ Mode Lokal HP (Offline)";
+    labelCloudStatus.style.color = "#f59e0b";
   }
 }
 

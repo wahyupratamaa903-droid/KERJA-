@@ -1,10 +1,12 @@
-// sw.js - Service Worker Cache v5
-const CACHE_NAME = 'sarana-cache-v5';
+// sw.js - Service Worker Cache v7
+const CACHE_NAME = 'sarana-cache-v7';
 const ASSETS = [
   './',
   './index.html',
   './css/style.css',
   './js/app.js',
+  './js/config-db.js',
+  './js/cloud-sync.js',
   './js/token-calc.js',
   './js/gps.js',
   './js/filter.js',
@@ -17,7 +19,6 @@ const ASSETS = [
   './js/map.js',
   './js/mission.js',
   './js/calendar-sync.js',
-  './js/db.js',
   './manifest.json'
 ];
 
@@ -42,6 +43,10 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
+  // Jangan cache permintaan database cloud (harus selalu live)
+  if (e.request.url.includes('kvdb.io')) {
+    return e.respondWith(fetch(e.request));
+  }
   e.respondWith(
     fetch(e.request).catch(() => caches.match(e.request))
   );
