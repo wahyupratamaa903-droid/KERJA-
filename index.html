@@ -20,8 +20,31 @@
       <p>PT DEVIS JAYA • Bengkulu</p>
     </header>
 
+    <!-- BANNER KHUSUS PENONTON / TAMU -->
+    <div id="banner-tamu" class="banner-mode-tamu" style="display: none;">
+      <div>
+        <strong>🌐 Mode Pantau Publik</strong><br>
+        <span id="label-tgl-siaran">Memuat data siaran...</span>
+      </div>
+      <button type="button" id="btn-login-petugas" style="background:#047857; border:1px solid #10b981; color:#fff; font-size:0.7rem; padding:4px 8px; border-radius:6px; cursor:pointer;">
+        Mode Petugas
+      </button>
+    </div>
+
     <!-- TAB VIEW 1: DAFTAR SARANA & PATROLI -->
     <main id="view-sarana" class="tab-view active">
+      <!-- SAKELAR SIARAN CLOUD (KHUSUS HP PETUGAS) -->
+      <section id="panel-sakelar-siar" class="panel-siar-cloud">
+        <div class="siar-info">
+          <span class="siar-title">📡 Siaran Publik (Live Cloud)</span>
+          <span id="siar-status-text" class="siar-desc">Matang: Data hanya tersimpan di HP ini</span>
+        </div>
+        <label class="switch-toggle">
+          <input type="checkbox" id="toggle-siar-cloud">
+          <span class="slider"></span>
+        </label>
+      </section>
+
       <section class="panel-statistik">
         <div class="stat-item">
           <span class="stat-angka" id="stat-total">0</span>
@@ -56,6 +79,7 @@
 
       <input type="file" id="input-file-ocr" accept="image/*" capture="environment" style="display:none;">
 
+      <!-- FORM CATAT TITIK (OTOMATIS HILANG DI HP ORANG LAIN) -->
       <form id="form-sarana" class="form-box">
         <h2 class="form-title">Catat Titik Sarana Baru</h2>
 
@@ -147,9 +171,8 @@
       <div id="peta-gis"></div>
     </main>
 
-    <!-- TAB VIEW 3: MISI & OPERASIONAL LAPANGAN (SUPER RINGKAS) -->
+    <!-- TAB VIEW 3: MISI & OPERASIONAL LAPANGAN -->
     <main id="view-misi" class="tab-view">
-      <!-- 1. Jadwal & Agenda Harian Otomatis -->
       <section class="misi-card">
         <div class="misi-header">
           <div>
@@ -161,7 +184,6 @@
         <div id="container-list-misi" class="misi-list-box"></div>
       </section>
 
-      <!-- 2. Plafon BBM Mingguan (Kamis s/d Rabu) -->
       <section class="misi-card">
         <div class="misi-header">
           <div>
@@ -191,7 +213,6 @@
           <div id="bbm-progress-fill" class="bbm-progress-fill" style="width: 100%;"></div>
         </div>
 
-        <!-- Tombol Cepat Isi Bensin -->
         <div class="bbm-quick-buttons">
           <button type="button" class="btn-preset-bbm" data-nominal="20000">+ Isi Rp 20.000</button>
           <button type="button" class="btn-preset-bbm" data-nominal="30000">+ Isi Rp 30.000</button>
@@ -297,7 +318,7 @@
     <img id="img-zoom" class="modal-foto-isi" alt="Zoom Foto">
   </div>
 
-  <!-- Bilah Navigasi Bawah 3 Menu -->
+  <!-- Navigasi Bawah -->
   <nav class="nav-bottom">
     <button type="button" class="nav-item active" data-tab="view-sarana">
       <span style="font-size:1.1rem;">📍</span>

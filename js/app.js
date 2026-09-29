@@ -10,6 +10,7 @@ import { scanAngkaMeteranDariFile } from './ocr.js';
 import { inisialisasiPeta, perbaruiPinPeta, perbaruiLokasiUserDiPeta, perbaikiUkuranPeta } from './map.js';
 import { pasangAlarmTokenHabis } from './calendar-sync.js';
 import { dapatkanMisiHariIni, getStatusBBM, catatIsiBbm } from './mission.js';
+import { siarkanDataKeCloud, ambilDataSiaranCloud } from './db.js';
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -38,22 +39,28 @@ const btnScanForm = document.getElementById('btn-scan-form');
 const btnScanModal = document.getElementById('btn-scan-modal');
 let targetInputOcr = null;
 
-// Modal Update
+// Modal
 const modalUpdate = document.getElementById('modal-update');
 const formUpdate = document.getElementById('form-update');
 const btnTutupModal = document.getElementById('btn-tutup-modal');
 
-// Modal Anggaran
 const modalAnggaran = document.getElementById('modal-anggaran');
 const kontenRincianAnggaran = document.getElementById('konten-rincian-anggaran');
 const btnTutupAnggaran = document.getElementById('btn-tutup-anggaran');
 
-// Modal Edit
 const modalEdit = document.getElementById('modal-edit');
 const formEdit = document.getElementById('form-edit');
 const btnTutupEdit = document.getElementById('btn-tutup-edit');
 const editJenisLampu = document.getElementById('edit-jenisLampu');
 const editJumlahLampu = document.getElementById('edit-jumlahLampu');
+
+// Elemen Sakelar Siaran & Banner Tamu
+const toggleSiar = document.getElementById('toggle-siar-cloud');
+const siarStatusText = document.getElementById('siar-status-text');
+const panelSakelar = document.getElementById('panel-sakelar-siar');
+const bannerTamu = document.getElementById('banner-tamu');
+const labelTglSiaran = document.getElementById('label-tgl-siaran');
+const btnLoginPetugas = document.getElementById('btn-login-petugas');
 
 // Pencarian & Filter
 const inputCari = document.getElementById('input-cari');
@@ -64,6 +71,7 @@ let indexSaranaTerpilih = null;
 let statusFilterAktif = 'semua';
 let posisiUserSekarang = null;
 let modeRuteAktif = false;
+let isModeTamu = false;
 
 const tglHariIni = new Date().toISOString().split('T')[0];
 document.getElementById('tanggalPengecekan').value = tglHariIni;
@@ -151,7 +159,6 @@ btnToolRute.addEventListener('click', async () => {
   }
 });
 
-// Modal Estimasi Anggaran Sesuai Acuan Bu Reni
 btnToolAnggaran.addEventListener('click', () => {
   const hasil = hitungEstimasiBiaya(dataSarana, hitungPrediksiHabis);
 
@@ -258,6 +265,40 @@ btnEksporWa.addEventListener('click', async () => {
   }
 });
 
+// LOGIKA SAKELAR SIARAN CLOUD (LIVE TOGGLE)
+toggleSiar.addEventListener('change', async () => {
+  if (toggleSiar.checked) {
+    siarStatusText.textContent = "Mengunggah data ke Cloud...";
+    toggleSiar.disabled = true;
+    try {
+      const meta = await siarkanDataKeCloud(dataSarana);
+      localStorage.setItem('status_siar_aktif', 'true');
+      siarStatusText.textContent = `🟢 Aktif: ${dataSarana.length} sarana disiarkan`;
+      alert("✅ Seluruh data sarana berhasil disiarkan! Siapa pun yang membuka web sekarang dapat melihat seluruh data secara langsung.");
+    } catch (err) {
+      alert("Gagal menyiarkan: " + err.message);
+      toggleSiar.checked = false;
+      siarStatusText.textContent = "Gagal menyiarkan";
+    } finally {
+      toggleSiar.disabled = false;
+    }
+  } else {
+    localStorage.removeItem('status_siar_aktif');
+    siarStatusText.textContent = "Matang: Data hanya tersimpan di HP ini";
+  }
+});
+
+// Tombol Masuk Mode Petugas (Jika membuka dari perangkat baru)
+btnLoginPetugas.addEventListener('click', () => {
+  const pin = prompt("Masukkan PIN Petugas untuk mengaktifkan mode edit:");
+  if (pin === "2026" || pin === "admin") {
+    localStorage.setItem('mode_petugas', 'admin');
+    location.reload();
+  } else {
+    alert("PIN salah.");
+  }
+});
+
 function perbaruiStatistik() {
   const total = dataSarana.length;
   const kritis = dataSarana.filter(item => {
@@ -330,7 +371,7 @@ function renderData() {
     const barisHistoriHtml = riwayatUrutTerbalik.map((h) => `
       <div class="baris-histori-item" style="display:flex; justify-content:space-between; align-items:center; padding:3px 0;">
         <span>📅 ${h.tanggal}: <strong>${h.kwh.toLocaleString('id-ID')} kWh</strong></span>
-        ${item.riwayatToken.length > 1 ? `<button class="btn-hapus-entri" data-sarana-id="${item.id}" data-tgl="${h.tanggal}" data-kwh="${h.kwh}" style="background:transparent; border:none; color:#ef4444; cursor:pointer; font-size:0.8rem; padding:0 4px;" title="Hapus catatan salah ini">✕</button>` : ''}
+        ${(!isModeTamu && item.riwayatToken.length > 1) ? `<button class="btn-hapus-entri" data-sarana-id="${item.id}" data-tgl="${h.tanggal}" data-kwh="${h.kwh}" style="background:transparent; border:none; color:#ef4444; cursor:pointer; font-size:0.8rem; padding:0 4px;" title="Hapus catatan salah ini">✕</button>` : ''}
       </div>
     `).join('');
 
@@ -351,7 +392,7 @@ function renderData() {
         <div class="grid-ringkasan" style="border:1px solid #ef4444; background:rgba(239,68,68,0.1);">
           <div style="color:#ef4444; font-weight:700;">⚠️ TERDETEKSI SALAH KETIK ANGKA:</div>
           <div>${info.keteranganPemakaian}</div>
-          <div style="font-size:0.75rem; color:#cbd5e1;">Laju ${info.rataPerHari} kWh/hr tidak realistis untuk ${item.tipe}. Hapus riwayat tanggal yang salah menggunakan tombol ✕ di atas.</div>
+          <div style="font-size:0.75rem; color:#cbd5e1;">Laju ${info.rataPerHari} kWh/hr tidak realistis untuk ${item.tipe}.</div>
         </div>
       `;
     } else {
@@ -384,6 +425,18 @@ function renderData() {
       `;
     }
 
+    // Tombol aksi hanya tampil untuk petugas
+    let footerHtml = '';
+    if (!isModeTamu) {
+      footerHtml = `
+        <div class="kartu-footer">
+          <button class="btn-update" data-index="${originalIndex}">+ Catat Token</button>
+          <button class="btn-edit" data-index="${originalIndex}">Edit</button>
+          <button class="btn-hapus" data-index="${originalIndex}">Hapus</button>
+        </div>
+      `;
+    }
+
     kartu.innerHTML = `
       <div class="kartu-header">
         <div>
@@ -404,16 +457,18 @@ function renderData() {
         ${galeriHtml}
       </div>
 
-      <div class="kartu-footer">
-        <button class="btn-update" data-index="${originalIndex}">+ Catat Token</button>
-        <button class="btn-edit" data-index="${originalIndex}">Edit</button>
-        <button class="btn-hapus" data-index="${originalIndex}">Hapus</button>
-      </div>
+      ${footerHtml}
     `;
 
     containerDaftar.appendChild(kartu);
   });
 
+  if (!isModeTamu) {
+    pasangEventTombolPetugas();
+  }
+}
+
+function pasangEventTombolPetugas() {
   document.querySelectorAll('.btn-hapus-entri').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -596,7 +651,6 @@ function renderMisiDanBBM() {
     </div>
   `).join('');
 
-  // Render BBM
   const infoBbm = getStatusBBM();
   document.getElementById('bbm-rentang-text').textContent = infoBbm.rentangPeriode;
   document.getElementById('bbm-sisa-rp').textContent = `Rp ${infoBbm.sisa.toLocaleString('id-ID')}`;
@@ -639,10 +693,63 @@ document.getElementById('form-catat-bbm').addEventListener('submit', (e) => {
   }
 });
 
-function inisialisasiAplikasi() {
+// INISIALISASI CERDAS: DETEKSI ADMIN / PENONTON (VIEWER)
+async function inisialisasiAplikasi() {
   inisialisasiPenampilFoto();
-  dataSarana = JSON.parse(localStorage.getItem('sarana-kerja-v3') || '[]');
-  renderData();
+
+  const dataLokal = JSON.parse(localStorage.getItem('sarana-kerja-v3') || '[]');
+  const isExplicitAdmin = localStorage.getItem('mode_petugas') === 'admin';
+
+  // JIKA DI HP KAMU (ADA DATA LOKAL / ADMIN)
+  if (dataLokal.length > 0 || isExplicitAdmin) {
+    isModeTamu = false;
+    dataSarana = dataLokal;
+    panelSakelar.style.display = 'flex';
+    form.style.display = 'block';
+    bannerTamu.style.display = 'none';
+
+    // Cek status toggle lokal
+    const siarAktif = localStorage.getItem('status_siar_aktif') === 'true';
+    toggleSiar.checked = siarAktif;
+    if (siarAktif) {
+      siarStatusText.textContent = `🟢 Aktif: ${dataSarana.length} sarana disiarkan`;
+    }
+    renderData();
+  } 
+  // JIKA DIBUKA DI HP/LAPTOP ORANG LAIN (MODE TAMU / PENONTON)
+  else {
+    isModeTamu = true;
+    panelSakelar.style.display = 'none';
+    form.style.display = 'none'; // Sembunyikan form input agar tidak diubah tamu
+    bannerTamu.style.display = 'flex';
+
+    containerDaftar.innerHTML = `
+      <div class="state-kosong">
+        <p>Menghubungkan ke Siaran Live PT DEVIS JAYA...</p>
+      </div>
+    `;
+
+    try {
+      const dataCloud = await ambilDataSiaranCloud();
+      if (dataCloud.daftarSarana.length > 0) {
+        dataSarana = dataCloud.daftarSarana;
+        labelTglSiaran.textContent = `Pembaruan: ${new Date(dataCloud.infoMeta.waktuUpdate || Date.now()).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`;
+        renderData();
+      } else {
+        containerDaftar.innerHTML = `
+          <div class="state-kosong">
+            <p>Petugas lapangan belum mengaktifkan sakelar siaran publik.</p>
+          </div>
+        `;
+      }
+    } catch (err) {
+      containerDaftar.innerHTML = `
+        <div class="state-kosong">
+          <p>Gagal memuat siaran live: ${err.message}</p>
+        </div>
+      `;
+    }
+  }
 }
 
 inisialisasiAplikasi();
