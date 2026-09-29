@@ -15,22 +15,21 @@
 </head>
 <body>
   <div class="wrapper">
-    <header>
-      <h1>Monitoring Sarana Lapangan</h1>
-      <p>PT DEVIS JAYA • Bengkulu</p>
+    <!-- TOP BAR ELEGAN: BRAND & KONTROL BRANKAS -->
+    <header class="top-header-bar">
+      <div class="header-brand">
+        <span class="brand-title">PT DEVIS JAYA</span>
+        <span class="live-pill"><span class="live-dot"></span><span id="label-sync-status">Firebase Live</span></span>
+      </div>
+      <div class="header-actions">
+        <button type="button" id="btn-buka-vault" class="btn-header-action vault" title="Brankas Cadangan & Mesin Waktu">
+          🛡️ Brankas
+        </button>
+        <button type="button" id="btn-toggle-auth" class="btn-header-action auth" title="Hak Akses Petugas">
+          🔐 Tamu
+        </button>
+      </div>
     </header>
-
-    <!-- BAR STATUS OTENTIKASI ENTERPRISE -->
-    <div class="bar-keamanan-top">
-      <div id="status-akses-badge" class="badge-akses viewer">
-        <span class="dot-status"></span>
-        <span id="text-akses-mode">Mode Tamu (Read-Only)</span>
-      </div>
-      <div style="display:flex; gap:6px; align-items:center;">
-        <button type="button" id="btn-refresh-cloud" class="btn-refresh-pill" title="Ambil Data Terbaru">🔄 Sync</button>
-        <button type="button" id="btn-toggle-auth" class="btn-auth-action">🔐 Akses Petugas</button>
-      </div>
-    </div>
 
     <!-- TAB VIEW 1: DAFTAR SARANA & PATROLI -->
     <main id="view-sarana" class="tab-view active">
@@ -68,7 +67,7 @@
 
       <input type="file" id="input-file-ocr" accept="image/*" capture="environment" style="display:none;">
 
-      <!-- FORM CATAT TITIK (TERKUNCI: HANYA MUNCUL DI HP PETUGAS) -->
+      <!-- FORM CATAT TITIK (TERKUNCI: HANYA MUNCUL JIKA AKSES PETUGAS AKTIF) -->
       <form id="form-sarana" class="form-box" style="display: none;">
         <h2 class="form-title">Catat Titik Sarana Baru</h2>
 
@@ -121,7 +120,7 @@
         <div class="form-group">
           <label for="input-koordinat">Titik Koordinat (Bisa Otomatis atau Ketik/Paste)</label>
           <div class="gps-input-group">
-            <input type="text" id="input-koordinat" placeholder="Contoh: 3.797733°S, 102.266305°E">
+            <input type="text" id="input-koordinat" placeholder="Contoh: -3.797733, 102.266305">
             <button type="button" id="btn-ambil-gps" class="btn-gps-auto">GPS Otomatis</button>
           </div>
         </div>
@@ -220,13 +219,54 @@
     </main>
   </div>
 
+  <!-- MODAL BRANKAS DATA & MESIN WAKTU (ENTERPRISE VAULT) -->
+  <div id="modal-vault" class="modal-backdrop">
+    <div class="modal-konten" style="max-width: 380px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h3 style="color:#fff; font-size:1rem;">🛡️ Brankas & Keamanan Data</h3>
+        <button type="button" id="btn-tutup-vault" style="background:transparent; border:none; color:#94a3b8; font-size:1.2rem; cursor:pointer;">✕</button>
+      </div>
+
+      <!-- SEKSI 1: CADANGAN FISIK MANDIRI -->
+      <div class="vault-section">
+        <div class="vault-section-title">📦 Cadangan Fisik Mandiri</div>
+        <div class="vault-btn-grid">
+          <button type="button" id="btn-vault-unduh" class="btn-vault-action">
+            <span class="icon">💾</span>
+            <span>Unduh Cadangan (.json)</span>
+          </button>
+          <button type="button" id="btn-vault-wa" class="btn-vault-action">
+            <span class="icon">📲</span>
+            <span>Kirim Teks ke WhatsApp</span>
+          </button>
+        </div>
+        <div style="margin-top: 8px;">
+          <input type="file" id="input-file-restore" accept=".json" style="display:none;">
+          <button type="button" id="btn-vault-pulihkan-file" class="btn-vault-action" style="width:100%; flex-direction:row; justify-content:center;">
+            <span class="icon">📥</span>
+            <span>Pulihkan dari File Cadangan (.json)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- SEKSI 2: MESIN WAKTU (SNAPSHOT AUTO ROLLBACK) -->
+      <div class="vault-section">
+        <div class="vault-section-title">⏱️ Mesin Waktu (Snapshot Otomatis)</div>
+        <p style="font-size:0.7rem; color:#94a3b8; margin-bottom:8px;">Pilih titik waktu untuk mengembalikan data jika terjadi salah edit atau hapus.</p>
+        <div id="kontainer-snapshot" class="snapshot-list">
+          <span style="color:#64748b; font-size:0.72rem;">Belum ada riwayat snapshot.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL AUTENTIKASI PIN PETUGAS -->
   <div id="modal-auth" class="modal-backdrop">
     <div class="modal-konten" style="max-width: 340px; text-align: center;">
       <div style="font-size: 2.2rem; margin-bottom: 6px;">🔐</div>
       <h3 style="color:#fff; margin-bottom: 4px;">Akses Petugas Lapangan</h3>
       <p style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 16px;">
-        Masukkan PIN Petugas PT DEVIS JAYA untuk membuka hak kelola, catat token, edit, dan hapus sarana.
+        Masukkan PIN Petugas PT DEVIS JAYA untuk membuka hak kelola sarana.
       </p>
 
       <form id="form-auth-pin">
@@ -319,7 +359,7 @@
           <input type="number" id="edit-jumlahLampu" min="0">
         </div>
         <div class="form-group">
-          <label for="edit-koordinat">Koordinat (Bisa Paste: 3.797733°S, 102.266305°E)</label>
+          <label for="edit-koordinat">Koordinat (Bisa Paste: -3.797733, 102.266305)</label>
           <input type="text" id="edit-koordinat">
         </div>
         <div style="display: flex; gap: 8px; margin-top: 14px;">

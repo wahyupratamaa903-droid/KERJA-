@@ -1,9 +1,10 @@
-const CACHE_NAME = 'sarana-cache-v14';
+const CACHE_NAME = 'sarana-cache-v15';
 const ASSETS = [
   './',
   './index.html',
   './css/style.css',
   './js/app.js',
+  './js/vault.js',
   './js/config-db.js',
   './js/cloud-sync.js',
   './js/token-calc.js',
