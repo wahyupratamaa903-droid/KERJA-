@@ -18,6 +18,9 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+const PIN_PETUGAS_DEFAULT = "2026";
+let isPetugas = localStorage.getItem('devis_petugas_auth') === 'granted';
+
 const form = document.getElementById('form-sarana');
 const containerDaftar = document.getElementById('daftar-sarana');
 const selectJenisLampu = document.getElementById('jenisLampu');
@@ -33,9 +36,19 @@ const btnToolAnggaran = document.getElementById('btn-tool-anggaran');
 const btnToolPdf = document.getElementById('btn-tool-pdf');
 const btnToolKalender = document.getElementById('btn-tool-kalender');
 
-// Status Cloud
-const labelCloudStatus = document.getElementById('label-cloud-status');
+// Status & Keamanan Bar
+const statusAksesBadge = document.getElementById('status-akses-badge');
+const textAksesMode = document.getElementById('text-akses-mode');
+const btnToggleAuth = document.getElementById('btn-toggle-auth');
 const btnRefreshCloud = document.getElementById('btn-refresh-cloud');
+const boxAksiBbm = document.getElementById('box-aksi-bbm');
+
+// Modal Auth
+const modalAuth = document.getElementById('modal-auth');
+const formAuthPin = document.getElementById('form-auth-pin');
+const inputPinPetugas = document.getElementById('input-pin-petugas');
+const checkIngatPerangkat = document.getElementById('check-ingat-perangkat');
+const btnTutupAuth = document.getElementById('btn-tutup-auth');
 
 // OCR
 const inputFileOcr = document.getElementById('input-file-ocr');
@@ -97,6 +110,61 @@ navButtons.forEach((btn) => {
       renderMisiDanBBM();
     }
   });
+});
+
+// SISTEM MANAJEMEN AKSES & KEAMANAN
+function sesuaikanTampilanAkses() {
+  if (isPetugas) {
+    statusAksesBadge.className = "badge-akses admin";
+    textAksesMode.textContent = "Akses Petugas Aktif";
+    btnToggleAuth.textContent = "🔒 Kunci";
+    btnToggleAuth.className = "btn-auth-action terbuka";
+    form.style.display = "block";
+    boxAksiBbm.style.display = "block";
+  } else {
+    statusAksesBadge.className = "badge-akses viewer";
+    textAksesMode.textContent = "Mode Tamu (Read-Only)";
+    btnToggleAuth.textContent = "🔐 Akses Petugas";
+    btnToggleAuth.className = "btn-auth-action";
+    form.style.display = "none";
+    boxAksiBbm.style.display = "none";
+  }
+}
+
+btnToggleAuth.addEventListener('click', () => {
+  if (isPetugas) {
+    if (confirm("Kunci kembali aplikasi ke Mode Tamu?")) {
+      localStorage.removeItem('devis_petugas_auth');
+      isPetugas = false;
+      sesuaikanTampilanAkses();
+      renderData();
+    }
+  } else {
+    inputPinPetugas.value = "";
+    modalAuth.style.display = "flex";
+    inputPinPetugas.focus();
+  }
+});
+
+btnTutupAuth.addEventListener('click', () => { modalAuth.style.display = "none"; });
+
+formAuthPin.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const pin = inputPinPetugas.value.trim();
+  if (pin === PIN_PETUGAS_DEFAULT) {
+    isPetugas = true;
+    if (checkIngatPerangkat.checked) {
+      localStorage.setItem('devis_petugas_auth', 'granted');
+    }
+    modalAuth.style.display = "none";
+    sesuaikanTampilanAkses();
+    renderData();
+    if (navigator.vibrate) navigator.vibrate([40, 50, 40]);
+    alert("✅ Akses Petugas Diberikan! Anda sekarang dapat menambah, mengedit, dan menghapus sarana.");
+  } else {
+    alert("❌ PIN Keamanan Salah!");
+    inputPinPetugas.value = "";
+  }
 });
 
 selectJenisLampu.addEventListener('change', () => {
@@ -260,58 +328,38 @@ btnEksporWa.addEventListener('click', async () => {
   }
 });
 
-// SIMPAN & SINKRON CLOUD INSTAN
+// SIMPAN & SINKRONISASI CLOUD OTOMATIS
 async function simpanPerubahanData() {
   localStorage.setItem('sarana-kerja-v3', JSON.stringify(dataSarana));
   renderData();
-
-  if (labelCloudStatus) {
-    labelCloudStatus.textContent = "⏳ Menyinkronkan ke Cloud...";
-    labelCloudStatus.style.color = "#f59e0b";
-  }
+  perbaruiPinPeta(dataSarana, hitungPrediksiHabis);
 
   try {
     await kirimDataKeServer(dataSarana);
-    if (labelCloudStatus) {
-      labelCloudStatus.textContent = `🟢 Cloud Live: ${dataSarana.length} Sarana`;
-      labelCloudStatus.style.color = "#10b981";
-    }
   } catch (err) {
-    if (labelCloudStatus) {
-      labelCloudStatus.textContent = "⚠️ Tersimpan di HP (Cloud Tertunda)";
-      labelCloudStatus.style.color = "#ef4444";
-    }
+    console.warn("Sinkronisasi cloud tertunda:", err);
   }
 }
 
-// Refresh Data Cloud Manual
+// Refresh Data Manual dari Cloud
 btnRefreshCloud.addEventListener('click', async () => {
-  btnRefreshCloud.textContent = "Memuat...";
+  btnRefreshCloud.textContent = "⏳...";
   btnRefreshCloud.disabled = true;
   try {
     const dataTerbaru = await ambilDataDariServer();
     if (dataTerbaru && dataTerbaru.length > 0) {
-      // Pertahankan foto lokal jika ada
-      const mapFoto = {};
-      dataSarana.forEach(s => { if (s.fotos) mapFoto[s.id] = s.fotos; });
-
-      dataSarana = dataTerbaru.map(s => ({
-        ...s,
-        fotos: mapFoto[s.id] || []
-      }));
-
+      dataSarana = dataTerbaru;
       localStorage.setItem('sarana-kerja-v3', JSON.stringify(dataSarana));
       renderData();
-      labelCloudStatus.textContent = `🟢 Cloud Live: ${dataSarana.length} Sarana`;
-      labelCloudStatus.style.color = "#10b981";
-      alert("✅ Data sarana live berhasil diperbarui dari Cloud!");
+      perbaruiPinPeta(dataSarana, hitungPrediksiHabis);
+      alert(`✅ Berhasil menyinkronkan ${dataSarana.length} sarana dari Google Cloud!`);
     } else {
-      alert("Belum ada data baru di server.");
+      alert("Data di cloud sudah mutakhir.");
     }
   } catch (err) {
-    alert("Gagal memuat dari server: " + err.message);
+    alert("Gagal memuat: " + err.message);
   } finally {
-    btnRefreshCloud.textContent = "🔄 Refresh Data";
+    btnRefreshCloud.textContent = "🔄 Sync";
     btnRefreshCloud.disabled = false;
   }
 });
@@ -388,7 +436,7 @@ function renderData() {
     const barisHistoriHtml = riwayatUrutTerbalik.map((h) => `
       <div class="baris-histori-item" style="display:flex; justify-content:space-between; align-items:center; padding:3px 0;">
         <span>📅 ${h.tanggal}: <strong>${h.kwh.toLocaleString('id-ID')} kWh</strong></span>
-        ${item.riwayatToken.length > 1 ? `<button class="btn-hapus-entri" data-sarana-id="${item.id}" data-tgl="${h.tanggal}" data-kwh="${h.kwh}" style="background:transparent; border:none; color:#ef4444; cursor:pointer; font-size:0.8rem; padding:0 4px;" title="Hapus catatan salah ini">✕</button>` : ''}
+        ${(isPetugas && item.riwayatToken.length > 1) ? `<button class="btn-hapus-entri" data-sarana-id="${item.id}" data-tgl="${h.tanggal}" data-kwh="${h.kwh}" style="background:transparent; border:none; color:#ef4444; cursor:pointer; font-size:0.8rem; padding:0 4px;" title="Hapus catatan salah ini">✕</button>` : ''}
       </div>
     `).join('');
 
@@ -442,6 +490,18 @@ function renderData() {
       `;
     }
 
+    // Tombol aksi hanya tampil untuk Petugas yang terautentikasi
+    let footerHtml = '';
+    if (isPetugas) {
+      footerHtml = `
+        <div class="kartu-footer">
+          <button class="btn-update" data-index="${originalIndex}">+ Catat Token</button>
+          <button class="btn-edit" data-index="${originalIndex}">Edit</button>
+          <button class="btn-hapus" data-index="${originalIndex}">Hapus</button>
+        </div>
+      `;
+    }
+
     kartu.innerHTML = `
       <div class="kartu-header">
         <div>
@@ -462,20 +522,18 @@ function renderData() {
         ${galeriHtml}
       </div>
 
-      <div class="kartu-footer">
-        <button class="btn-update" data-index="${originalIndex}">+ Catat Token</button>
-        <button class="btn-edit" data-index="${originalIndex}">Edit</button>
-        <button class="btn-hapus" data-index="${originalIndex}">Hapus</button>
-      </div>
+      ${footerHtml}
     `;
 
     containerDaftar.appendChild(kartu);
   });
 
-  pasangEventTombol();
+  if (isPetugas) {
+    pasangEventTombolPetugas();
+  }
 }
 
-function pasangEventTombol() {
+function pasangEventTombolPetugas() {
   document.querySelectorAll('.btn-hapus-entri').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -486,7 +544,7 @@ function pasangEventTombol() {
       const sarana = dataSarana.find(s => s.id === sId);
       if (!sarana) return;
 
-      if (confirm(`Hapus catatan salah ini (${tgl} - ${kwh} kWh)?`)) {
+      if (confirm(`Hapus catatan ini (${tgl} - ${kwh} kWh)?`)) {
         const idxEntri = sarana.riwayatToken.findIndex(r => r.tanggal === tgl && Number(r.kwh) === kwh);
         if (idxEntri !== -1) {
           sarana.riwayatToken.splice(idxEntri, 1);
@@ -556,7 +614,7 @@ tabFilters.forEach(tab => {
   });
 });
 
-// FORM TAMBAH SARANA (LANGSUNG AUTO-SYNC KE CLOUD)
+// FORM TAMBAH SARANA BARU
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const btnSubmit = form.querySelector('button[type="submit"]');
@@ -594,7 +652,7 @@ form.addEventListener('submit', async (e) => {
   document.getElementById('tanggalPengecekan').value = tglHariIni;
   inputJumlahLampu.disabled = false;
   btnSubmit.disabled = false;
-  btnSubmit.textContent = 'Simpan Sarana';
+  btnSubmit.textContent = 'Simpan Sarana Baru';
 });
 
 // FORM EDIT SARANA
@@ -698,49 +756,28 @@ document.getElementById('form-catat-bbm').addEventListener('submit', (e) => {
   }
 });
 
-// INISIALISASI APLIKASI
+// INISIALISASI CERDAS
 async function inisialisasiAplikasi() {
   inisialisasiPenampilFoto();
+  sesuaikanTampilanAkses();
 
   const dataLokal = JSON.parse(localStorage.getItem('sarana-kerja-v3') || '[]');
-
-  // Tampilkan data lokal terlebih dahulu jika ada
   if (dataLokal.length > 0) {
     dataSarana = dataLokal;
     renderData();
   }
 
-  // Tarik data paling mutakhir dari Server Cloud
+  // Sinkronisasi otomatis ke Google Firebase
   try {
     const dataServer = await ambilDataDariServer();
     if (dataServer && dataServer.length > 0) {
-      // Pertahankan foto lokal jika ada
-      const mapFoto = {};
-      dataLokal.forEach(s => { if (s.fotos) mapFoto[s.id] = s.fotos; });
-
-      dataSarana = dataServer.map(s => ({
-        ...s,
-        fotos: mapFoto[s.id] || []
-      }));
-
+      dataSarana = dataServer;
       localStorage.setItem('sarana-kerja-v3', JSON.stringify(dataSarana));
       renderData();
-      if (labelCloudStatus) {
-        labelCloudStatus.textContent = `🟢 Cloud Live: ${dataSarana.length} Sarana Terhubung`;
-        labelCloudStatus.style.color = "#10b981";
-      }
-    } else if (dataLokal.length > 0) {
-      await kirimDataKeServer(dataLokal);
-      if (labelCloudStatus) {
-        labelCloudStatus.textContent = `🟢 Cloud Live: ${dataLokal.length} Sarana Terhubung`;
-        labelCloudStatus.style.color = "#10b981";
-      }
+      perbaruiPinPeta(dataSarana, hitungPrediksiHabis);
     }
   } catch (err) {
-    if (labelCloudStatus) {
-      labelCloudStatus.textContent = "⚠️ Mode Lokal HP (Offline)";
-      labelCloudStatus.style.color = "#f59e0b";
-    }
+    console.error("Gagal terhubung ke Firebase:", err);
   }
 }
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sarana-cache-v12';
+const CACHE_NAME = 'sarana-cache-v13';
 const ASSETS = [
   './',
   './index.html',
@@ -40,7 +40,6 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-  // Jangan pernah cache URL database Firebase agar data selalu live 100%
   if (e.request.url.includes('firebaseio.com')) {
     return e.respondWith(fetch(e.request));
   }

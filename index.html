@@ -20,12 +20,16 @@
       <p>PT DEVIS JAYA • Bengkulu</p>
     </header>
 
-    <!-- BAR STATUS CLOUD LIVE OTOMATIS -->
-    <div id="bar-status-cloud" style="background:#0f172a; border:1px solid #1e293b; border-radius:8px; padding:8px 12px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; font-size:0.75rem;">
-      <span id="label-cloud-status" style="color:#10b981; font-weight:600;">🟢 Cloud Live: Terhubung</span>
-      <button type="button" id="btn-refresh-cloud" style="background:#1e293b; border:1px solid #334155; color:#93c5fd; padding:3px 8px; border-radius:6px; cursor:pointer; font-size:0.7rem;">
-        🔄 Refresh Data
-      </button>
+    <!-- BAR STATUS OTENTIKASI ENTERPRISE -->
+    <div class="bar-keamanan-top">
+      <div id="status-akses-badge" class="badge-akses viewer">
+        <span class="dot-status"></span>
+        <span id="text-akses-mode">Mode Tamu (Read-Only)</span>
+      </div>
+      <div style="display:flex; gap:6px; align-items:center;">
+        <button type="button" id="btn-refresh-cloud" class="btn-refresh-pill" title="Ambil Data Terbaru">🔄 Sync</button>
+        <button type="button" id="btn-toggle-auth" class="btn-auth-action">🔐 Akses Petugas</button>
+      </div>
     </div>
 
     <!-- TAB VIEW 1: DAFTAR SARANA & PATROLI -->
@@ -64,8 +68,8 @@
 
       <input type="file" id="input-file-ocr" accept="image/*" capture="environment" style="display:none;">
 
-      <!-- FORM CATAT TITIK (OTOMATIS DISEMBUNYIKAN UNTUK PENONTON/TAMU) -->
-      <form id="form-sarana" class="form-box">
+      <!-- FORM CATAT TITIK (TERKUNCI: HANYA MUNCUL DI HP PETUGAS) -->
+      <form id="form-sarana" class="form-box" style="display: none;">
         <h2 class="form-title">Catat Titik Sarana Baru</h2>
 
         <div class="form-group">
@@ -127,11 +131,11 @@
           <input type="file" id="fotoSarana" accept="image/jpeg,image/png,image/webp" multiple>
         </div>
 
-        <button type="submit" class="btn-submit">Simpan Sarana</button>
+        <button type="submit" class="btn-submit">Simpan Sarana Baru</button>
       </form>
 
       <div class="kontrol-pencarian">
-        <h2 class="judul-bagian">Daftar Sarana</h2>
+        <h2 class="judul-bagian">Daftar Sarana Lapangan</h2>
         <input type="text" id="input-cari" class="input-cari-jalan" placeholder="Cari nama jalan atau tipe sarana...">
         <div class="filter-tabs">
           <button class="tab-filter active" data-filter="semua">Semua</button>
@@ -198,20 +202,48 @@
           <div id="bbm-progress-fill" class="bbm-progress-fill" style="width: 100%;"></div>
         </div>
 
-        <div class="bbm-quick-buttons">
-          <button type="button" class="btn-preset-bbm" data-nominal="20000">+ Isi Rp 20.000</button>
-          <button type="button" class="btn-preset-bbm" data-nominal="30000">+ Isi Rp 30.000</button>
-          <button type="button" class="btn-preset-bbm" data-nominal="50000">+ Isi Rp 50.000</button>
-        </div>
+        <div id="box-aksi-bbm" style="display: none;">
+          <div class="bbm-quick-buttons">
+            <button type="button" class="btn-preset-bbm" data-nominal="20000">+ Isi Rp 20.000</button>
+            <button type="button" class="btn-preset-bbm" data-nominal="30000">+ Isi Rp 30.000</button>
+            <button type="button" class="btn-preset-bbm" data-nominal="50000">+ Isi Rp 50.000</button>
+          </div>
 
-        <form id="form-catat-bbm" class="bbm-quick-form">
-          <input type="number" id="input-nominal-bbm" placeholder="Nominal lain (Rp)...">
-          <button type="submit" class="btn-catat-bbm">Catat</button>
-        </form>
+          <form id="form-catat-bbm" class="bbm-quick-form">
+            <input type="number" id="input-nominal-bbm" placeholder="Nominal lain (Rp)...">
+            <button type="submit" class="btn-catat-bbm">Catat</button>
+          </form>
+        </div>
 
         <div id="list-riwayat-bbm" class="bbm-riwayat-list"></div>
       </section>
     </main>
+  </div>
+
+  <!-- MODAL AUTENTIKASI PIN PETUGAS -->
+  <div id="modal-auth" class="modal-backdrop">
+    <div class="modal-konten" style="max-width: 340px; text-align: center;">
+      <div style="font-size: 2.2rem; margin-bottom: 6px;">🔐</div>
+      <h3 style="color:#fff; margin-bottom: 4px;">Akses Petugas Lapangan</h3>
+      <p style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 16px;">
+        Masukkan PIN Petugas PT DEVIS JAYA untuk membuka hak kelola, catat token, edit, dan hapus sarana.
+      </p>
+
+      <form id="form-auth-pin">
+        <input type="password" id="input-pin-petugas" placeholder="PIN..." maxlength="6" 
+               style="text-align: center; font-size: 1.4rem; letter-spacing: 6px; margin-bottom: 12px;" required>
+
+        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 16px; font-size: 0.78rem; color: #cbd5e1;">
+          <input type="checkbox" id="check-ingat-perangkat" checked style="width: 16px; height: 16px;">
+          <label for="check-ingat-perangkat" style="margin-bottom:0; cursor:pointer;">Ingat di HP Ini Selamanya</label>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+          <button type="button" id="btn-tutup-auth" class="btn-hapus" style="flex:1;">Batal</button>
+          <button type="submit" class="btn-submit" style="flex:1;">Verifikasi</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <!-- Modal Update Token -->

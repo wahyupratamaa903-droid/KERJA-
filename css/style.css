@@ -717,3 +717,70 @@ input:checked + .slider:before { transform: translateX(20px); }
   color: #a7f3d0;
 }
 .banner-mode-tamu strong { color: #fff; }
+
+/* BAR KEAMANAN TOP ENTERPRISE */
+.bar-keamanan-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  margin-bottom: 12px;
+}
+.badge-akses {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.badge-akses.viewer {
+  background: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+  border: 1px solid #334155;
+}
+.badge-akses.admin {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+.dot-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #94a3b8;
+}
+.badge-akses.admin .dot-status {
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+
+.btn-refresh-pill {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #93c5fd;
+  padding: 5px 9px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-auth-action {
+  background: #2563eb;
+  border: none;
+  color: #fff;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-auth-action.terbuka {
+  background: #b91c1c;
+  color: #fecaca;
+}
