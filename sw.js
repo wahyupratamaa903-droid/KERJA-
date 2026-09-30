@@ -1,13 +1,10 @@
-const CACHE_NAME = 'sarana-cache-v15';
+const CACHE_NAME = 'sarana-cache-v16';
 const ASSETS = [
   './',
   './index.html',
   './css/style.css',
   './js/app.js',
   './js/vault.js',
-  './js/plugins/github-vault.js',
-  './js/plugins/power-engine.js',
-  './js/plugins/fuel-optimizer.js',
   './js/config-db.js',
   './js/cloud-sync.js',
   './js/token-calc.js',
@@ -22,6 +19,9 @@ const ASSETS = [
   './js/map.js',
   './js/mission.js',
   './js/calendar-sync.js',
+  './js/plugins/github-vault.js',
+  './js/plugins/power-engine.js',
+  './js/plugins/fuel-optimizer.js',
   './manifest.json'
 ];
 
