@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sarana-cache-v21';
+const CACHE_NAME = 'sarana-cache-v22';
 const ASSETS = [
   './',
   './index.html',
@@ -23,6 +23,7 @@ const ASSETS = [
   './js/plugins/power-engine.js',
   './js/plugins/fuel-optimizer.js',
   './js/plugins/parallax-3d.js',
+  './js/plugins/devis-jarvis.js',
   './manifest.json'
 ];
 
@@ -45,7 +46,7 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-  if (e.request.url.includes('firebaseio.com') || e.request.url.includes('tile.openstreetmap.org')) {
+  if (e.request.url.includes('firebaseio.com') || e.request.url.includes('tile.openstreetmap.org') || e.request.url.includes('api.groq.com')) {
     return e.respondWith(fetch(e.request));
   }
   e.respondWith(

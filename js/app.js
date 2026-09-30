@@ -846,3 +846,80 @@ if (btnVaultGithub) {
     jalankanBackupGitHub(dataSarana);
   });
 }
+
+// INTEGRASI DEVIS JARVIS (GROQ WHISPER & LLAMA 3.3)
+import { mulaiRekamSuara, hentikanDanProsesSuara, ekstrakDataTokenDenganAI, bacakanMorningBrief } from './plugins/devis-jarvis.js';
+
+const fabVoiceCmd = document.getElementById('fab-voice-cmd');
+const hudVoice = document.getElementById('hud-voice');
+const teksHudVoice = document.getElementById('teks-hud-voice');
+const btnToolJarvisBrief = document.getElementById('btn-tool-jarvis-brief');
+
+let sedangMerekam = false;
+
+// Event 1: Morning Briefing Eksekutif Otomatis
+if (btnToolJarvisBrief) {
+  btnToolJarvisBrief.addEventListener('click', () => {
+    const infoBbm = getStatusBBM();
+    bacakanMorningBrief(dataSarana, infoBbm, hitungPrediksiHabis);
+  });
+}
+
+// Event 2: Hands-Free Voice Input
+if (fabVoiceCmd) {
+  fabVoiceCmd.addEventListener('click', async () => {
+    if (!sedangMerekam) {
+      try {
+        await mulaiRekamSuara();
+        sedangMerekam = true;
+        fabVoiceCmd.classList.add('recording');
+        fabVoiceCmd.textContent = '⏹️';
+        teksHudVoice.textContent = 'Mendengarkan... Ucapkan: "Lokasi & Angka kWh"';
+        hudVoice.style.display = 'flex';
+      } catch (err) {
+        alert("Izin mikrofon diperlukan: " + err.message);
+      }
+    } else {
+      sedangMerekam = false;
+      fabVoiceCmd.classList.remove('recording');
+      fabVoiceCmd.textContent = '🎙️';
+      teksHudVoice.textContent = 'Groq AI memproses ucapan...';
+
+      try {
+        const hasilTeks = await hentikanDanProsesSuara();
+        teksHudVoice.textContent = `AI: "${hasilTeks}"`;
+
+        const dataEkstrak = await ekstrakDataTokenDenganAI(hasilTeks, dataSarana);
+        hudVoice.style.display = 'none';
+
+        if (dataEkstrak.error) {
+          alert(`Devis Jarvis: ${dataEkstrak.error}\nTeks terdengar: "${hasilTeks}"`);
+          return;
+        }
+
+        // Buka Modal Update dengan data yang otomatis terisi
+        const idxTarget = dataSarana.findIndex(s => s.id === dataEkstrak.idSarana);
+        if (idxTarget !== -1) {
+          indexSaranaTerpilih = idxTarget;
+          const sarana = dataSarana[idxTarget];
+          const terakhir = sarana.riwayatToken[sarana.riwayatToken.length - 1];
+
+          document.getElementById('nama-sarana-modal').innerHTML = `
+            <strong>${sarana.lokasi}</strong><br>
+            <span style="color:#60a5fa; font-size:0.8rem;">
+              Patokan Terakhir: <strong>${terakhir.kwh.toLocaleString('id-ID')} kWh</strong>
+            </span>
+          `;
+          document.getElementById('modalTanggal').value = new Date().toISOString().split('T')[0];
+          document.getElementById('modalKwh').value = dataEkstrak.kwh;
+          modalUpdate.style.display = 'flex';
+        } else {
+          alert(`Lokasi tidak cocok. Teks: "${hasilTeks}"`);
+        }
+      } catch (err) {
+        hudVoice.style.display = 'none';
+        alert("Gagal memproses suara: " + err.message);
+      }
+    }
+  });
+}
