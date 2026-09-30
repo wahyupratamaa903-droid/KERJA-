@@ -3,11 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>Monitoring Sarana Lapangan</title>
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#090d16">
+  <meta name="theme-color" content="#060911">
 
-  <!-- Leaflet CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -15,7 +17,6 @@
 </head>
 <body>
   <div class="wrapper">
-    <!-- TOP BAR ELEGAN: BRAND & KONTROL BRANKAS -->
     <header class="top-header-bar">
       <div class="header-brand">
         <span class="brand-title">PT DEVIS JAYA</span>
@@ -31,7 +32,6 @@
       </div>
     </header>
 
-    <!-- TAB VIEW 1: DAFTAR SARANA & PATROLI -->
     <main id="view-sarana" class="tab-view active">
       <section class="panel-statistik">
         <div class="stat-item">
@@ -59,6 +59,10 @@
           <span>📄</span>
           <span>PDF Formal</span>
         </button>
+        <button type="button" id="btn-tool-jarvis-brief" class="btn-tool" style="border-color: rgba(6, 182, 212, 0.4);">
+          <span>🎙️</span>
+          <span>Brief AI</span>
+        </button>
         <button type="button" id="btn-tool-kalender" class="btn-tool">
           <span>⏰</span>
           <span>Alarm Cek</span>
@@ -67,7 +71,6 @@
 
       <input type="file" id="input-file-ocr" accept="image/*" capture="environment" style="display:none;">
 
-      <!-- FORM CATAT TITIK (TERKUNCI: HANYA MUNCUL JIKA AKSES PETUGAS AKTIF) -->
       <form id="form-sarana" class="form-box" style="display: none;">
         <h2 class="form-title">Catat Titik Sarana Baru</h2>
 
@@ -146,7 +149,6 @@
       <div id="daftar-sarana"></div>
     </main>
 
-    <!-- TAB VIEW 2: PETA INTERAKTIF SATELIT GIS -->
     <main id="view-peta" class="tab-view">
       <div class="map-overlay-box">
         <span style="font-weight:700; color:#fff;">Radar Tiang Kota Bengkulu</span>
@@ -159,7 +161,6 @@
       <div id="peta-gis"></div>
     </main>
 
-    <!-- TAB VIEW 3: MISI & OPERASIONAL LAPANGAN -->
     <main id="view-misi" class="tab-view">
       <section class="misi-card">
         <div class="misi-header">
@@ -219,15 +220,23 @@
     </main>
   </div>
 
-  <!-- MODAL BRANKAS DATA & MESIN WAKTU (ENTERPRISE VAULT) -->
+  <!-- FLOATING DEVIS JARVIS MIC & HUD STATUS -->
+  <div id="hud-voice" class="hud-voice-banner">
+    <span class="live-dot" style="background:#ef4444; box-shadow:0 0 8px #ef4444;"></span>
+    <span id="teks-hud-voice">Devis Jarvis mendengarkan...</span>
+  </div>
+
+  <button type="button" id="fab-voice-cmd" class="fab-jarvis-mic" title="Bicara dengan Devis Jarvis">
+    🎙️️
+  </button>
+
   <div id="modal-vault" class="modal-backdrop">
     <div class="modal-konten" style="max-width: 380px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-        <h3 style="color:#fff; font-size:1rem;">🛡️ Brankas & Keamanan Data</h3>
+        <h3 style="color:#fff; font-size:1rem;">🛡️️ Brankas & Keamanan Data</h3>
         <button type="button" id="btn-tutup-vault" style="background:transparent; border:none; color:#94a3b8; font-size:1.2rem; cursor:pointer;">✕</button>
       </div>
 
-      <!-- SEKSI 1: CADANGAN FISIK MANDIRI -->
       <div class="vault-section">
         <div class="vault-section-title">📦 Cadangan Fisik Mandiri</div>
         <div class="vault-btn-grid">
@@ -253,9 +262,8 @@
         </div>
       </div>
 
-      <!-- SEKSI 2: MESIN WAKTU (SNAPSHOT AUTO ROLLBACK) -->
       <div class="vault-section">
-        <div class="vault-section-title">⏱️ Mesin Waktu (Snapshot Otomatis)</div>
+        <div class="vault-section-title">⏱️️ Mesin Waktu (Snapshot Otomatis)</div>
         <p style="font-size:0.7rem; color:#94a3b8; margin-bottom:8px;">Pilih titik waktu untuk mengembalikan data jika terjadi salah edit atau hapus.</p>
         <div id="kontainer-snapshot" class="snapshot-list">
           <span style="color:#64748b; font-size:0.72rem;">Belum ada riwayat snapshot.</span>
@@ -264,7 +272,6 @@
     </div>
   </div>
 
-  <!-- MODAL AUTENTIKASI PIN PETUGAS -->
   <div id="modal-auth" class="modal-backdrop">
     <div class="modal-konten" style="max-width: 340px; text-align: center;">
       <div style="font-size: 2.2rem; margin-bottom: 6px;">🔐</div>
@@ -290,7 +297,6 @@
     </div>
   </div>
 
-  <!-- Modal Update Token -->
   <div id="modal-update" class="modal-backdrop">
     <div class="modal-konten">
       <h3 style="margin-bottom: 6px;">Catat Token Baru</h3>
@@ -318,7 +324,6 @@
     </div>
   </div>
 
-  <!-- Modal Estimasi Anggaran -->
   <div id="modal-anggaran" class="modal-backdrop">
     <div class="modal-konten">
       <h3 style="margin-bottom: 6px;">Estimasi Anggaran Token</h3>
@@ -330,7 +335,6 @@
     </div>
   </div>
 
-  <!-- Modal Edit Sarana -->
   <div id="modal-edit" class="modal-backdrop">
     <div class="modal-konten">
       <h3 style="margin-bottom: 12px;">Edit Data Sarana</h3>
@@ -374,12 +378,10 @@
     </div>
   </div>
 
-  <!-- Lightbox Foto -->
   <div id="modal-foto" class="modal-backdrop">
     <img id="img-zoom" class="modal-foto-isi" alt="Zoom Foto">
   </div>
 
-  <!-- Navigasi Bawah -->
   <nav class="nav-bottom">
     <button type="button" class="nav-item active" data-tab="view-sarana">
       <span style="font-size:1.1rem;">📍</span>

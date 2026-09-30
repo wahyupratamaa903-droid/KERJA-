@@ -1227,3 +1227,57 @@ input:focus, select:focus {
   z-index: 10001;
   box-shadow: 0 4px 20px rgba(0,0,0,0.6);
 }
+
+/* FLOATING JARVIS VOICE BUTTON & HUD */
+.fab-jarvis-mic {
+  position: fixed;
+  bottom: 82px;
+  right: 18px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2563eb, #06b6d4) !important;
+  border: 2px solid rgba(255, 255, 255, 0.4) !important;
+  box-shadow: 0 4px 25px rgba(6, 182, 212, 0.6) !important;
+  color: #fff !important;
+  font-size: 1.5rem !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 99999 !important;
+  transition: all 0.2s ease;
+}
+.fab-jarvis-mic:active {
+  transform: scale(0.9);
+}
+.fab-jarvis-mic.recording {
+  background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+  box-shadow: 0 0 30px rgba(239, 68, 68, 0.9) !important;
+  animation: micPulse 1.2s infinite ease-in-out;
+}
+@keyframes micPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
+.hud-voice-banner {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid #06b6d4;
+  backdrop-filter: blur(14px);
+  padding: 8px 16px;
+  border-radius: 30px;
+  color: #38bdf8;
+  font-size: 0.76rem;
+  font-weight: 700;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  z-index: 100000;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.7);
+}

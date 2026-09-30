@@ -1,4 +1,5 @@
-const CACHE_NAME = 'sarana-cache-v22';
+// sw.js - Sistem Anti-Cache Otomatis (Network-First)
+const CACHE_NAME = 'sarana-cache-v23';
 const ASSETS = [
   './',
   './index.html',
@@ -28,8 +29,7 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
-  self.skipWaiting();
+  self.skipWaiting(); // Langsung aktifkan versi baru tanpa tunggu tutup tab
 });
 
 self.addEventListener('activate', (e) => {
@@ -37,7 +37,7 @@ self.addEventListener('activate', (e) => {
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((k) => {
-          if (k !== CACHE_NAME) return caches.delete(k);
+          if (k !== CACHE_NAME) return caches.delete(k); // Hapus total cache lama
         })
       );
     })
@@ -45,11 +45,21 @@ self.addEventListener('activate', (e) => {
   self.clients.claim();
 });
 
+// STRATEGI NETWORK-FIRST: Selalu ambil versi terbaru dari server Vercel jika online
 self.addEventListener('fetch', (e) => {
-  if (e.request.url.includes('firebaseio.com') || e.request.url.includes('tile.openstreetmap.org') || e.request.url.includes('api.groq.com')) {
+  if (e.request.url.includes('firebaseio.com') || e.request.url.includes('api.groq.com')) {
     return e.respondWith(fetch(e.request));
   }
+
   e.respondWith(
-    fetch(e.request).catch(() => caches.match(e.request))
+    fetch(e.request)
+      .then((networkRes) => {
+        if (networkRes && networkRes.status === 200) {
+          const resClone = networkRes.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(e.request, resClone));
+        }
+        return networkRes;
+      })
+      .catch(() => caches.match(e.request)) // Cadangan offline jika tidak ada sinyal
   );
 });

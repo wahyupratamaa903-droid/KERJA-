@@ -1,12 +1,10 @@
-// js/plugins/devis-jarvis.js - Devis Jarvis Voice Commander & Morning Brief (Groq AI Engine)
-
+// js/plugins/devis-jarvis.js - Devis Jarvis Voice Commander & Morning Brief (Groq AI)
 const GROQ_AUDIO_MODEL = "whisper-large-v3-turbo";
 const GROQ_CHAT_MODEL = "llama-3.3-70b-versatile";
 
 let mediaRecorder = null;
 let audioChunks = [];
 
-// Ambil Kunci Groq dari LocalStorage HP
 export function dapatkanGroqApiKey() {
   let key = localStorage.getItem('devis_groq_key');
   if (!key) {
@@ -22,7 +20,6 @@ export function dapatkanGroqApiKey() {
   return key;
 }
 
-// 1. Fitur Speech-to-Text: Rekam Suara Mikrofon HP
 export async function mulaiRekamSuara() {
   const apiKey = dapatkanGroqApiKey();
   if (!apiKey) throw new Error("Groq API Key belum dimasukkan.");
@@ -59,7 +56,6 @@ export function hentikanDanProsesSuara() {
   });
 }
 
-// 2. Kirim Audio Blob ke Groq Whisper REST API
 async function transkripGroqWhisper(blob, apiKey) {
   const formData = new FormData();
   formData.append("file", blob, "suara_patroli.webm");
@@ -69,9 +65,7 @@ async function transkripGroqWhisper(blob, apiKey) {
 
   const res = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
     method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`
-    },
+    headers: { "Authorization": `Bearer ${apiKey}` },
     body: formData
   });
 
@@ -84,7 +78,6 @@ async function transkripGroqWhisper(blob, apiKey) {
   return data.text;
 }
 
-// 3. AI NLU (Llama 3.3): Ekstrak Lokasi & Angka kWh dari Teks Suara
 export async function ekstrakDataTokenDenganAI(teksUcapan, daftarSarana) {
   const apiKey = dapatkanGroqApiKey();
   if (!apiKey) throw new Error("Groq API Key diperlukan.");
@@ -126,7 +119,6 @@ Jika tidak menemukan kecocokan sarana, berikan: {"error": "Sarana tidak dikenali
   return JSON.parse(data.choices[0].message.content);
 }
 
-// 4. Fitur Text-to-Speech: Suarakan Executive Morning Brief
 export function bacakanMorningBrief(daftarSarana, infoBbm, fnHitungPrediksi) {
   if (!('speechSynthesis' in window)) {
     alert("Peramban HP ini tidak mendukung audio speech.");
