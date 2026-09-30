@@ -988,3 +988,181 @@ input:checked + .slider:before { transform: translateX(20px); }
   text-decoration: none;
   margin-top: 12px;
 }
+
+/* TEMA CYBERPUNK DARK OBSIDIAN GLOBAL */
+body {
+  background: #060911 radial-gradient(circle at 50% 0%, rgba(30, 58, 138, 0.22) 0%, transparent 70%) !important;
+  color: #f1f5f9;
+}
+
+/* KARTU STATISTIK FUTURISTIK */
+.panel-statistik {
+  background: rgba(15, 23, 42, 0.75) !important;
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(59, 130, 246, 0.2) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  border-radius: 12px;
+}
+.stat-item .stat-angka {
+  font-family: 'Courier New', Courier, monospace;
+  letter-spacing: 1px;
+  text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+}
+.stat-item.danger .stat-angka {
+  text-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
+}
+
+/* FORMULIR TRANSPARAN GLASSMORPHISM */
+.form-box {
+  background: rgba(15, 23, 42, 0.8) !important;
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+  border-radius: 14px;
+}
+.form-title {
+  color: #fff;
+  font-size: 0.95rem;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 8px;
+}
+input, select {
+  background: rgba(10, 15, 29, 0.85) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #fff !important;
+  border-radius: 8px !important;
+}
+input:focus, select:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.3) !important;
+}
+
+/* KARTU SARANA 3D HOLOGRAFIK */
+.kartu-sarana {
+  background: linear-gradient(135deg, rgba(20, 29, 47, 0.9), rgba(11, 18, 33, 0.95)) !important;
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  border-radius: 12px !important;
+  margin-bottom: 14px;
+  transform: perspective(1000px);
+  transition: all 0.25s ease;
+}
+.kartu-sarana:active {
+  transform: scale(0.985);
+}
+.lokasi-sarana {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* BEACON RADAR PETA BERDENYUT (CYBERPUNK PIN) */
+.custom-hologram-marker {
+  background: transparent;
+  border: none;
+}
+.radar-beacon-pin {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.beacon-core {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  z-index: 2;
+  border: 2px solid #fff;
+}
+.beacon-ring {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid;
+  animation: radarWave 2s infinite cubic-bezier(0.1, 0.8, 0.3, 1);
+  opacity: 0;
+}
+
+@keyframes radarWave {
+  0% { transform: scale(0.4); opacity: 1; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+/* POPUP PETA DARK MATTER */
+.leaflet-popup-content-wrapper {
+  background: rgba(15, 23, 42, 0.95) !important;
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(59, 130, 246, 0.4) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8) !important;
+  color: #fff !important;
+}
+.leaflet-popup-tip {
+  background: rgba(15, 23, 42, 0.95) !important;
+}
+.dark-holo-popup {
+  padding: 4px;
+  font-family: inherit;
+}
+.popup-tag {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.popup-tag.kritis { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; }
+.popup-tag.waspada { background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid #f59e0b; }
+.popup-tag.aman { background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid #10b981; }
+
+.popup-title {
+  color: #fff;
+  font-size: 0.85rem;
+  margin: 4px 0 8px 0;
+}
+.popup-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  margin-bottom: 3px;
+}
+.popup-row strong { color: #fff; }
+.popup-btn-nav {
+  display: block;
+  background: #2563eb;
+  color: #fff;
+  text-align: center;
+  padding: 6px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-decoration: none;
+  margin-top: 8px;
+}
+
+/* POSISI USER MOTOR DI PETA */
+.user-gps-pulse {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.user-gps-core {
+  width: 14px;
+  height: 14px;
+  background: #38bdf8;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 12px #38bdf8;
+}
