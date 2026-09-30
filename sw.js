@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sarana-cache-v18';
+const CACHE_NAME = 'sarana-cache-v19';
 const ASSETS = [
   './',
   './index.html',
@@ -32,7 +32,6 @@ self.addEventListener('install', (e) => {
 });
 
 self.addEventListener('activate', (e) => {
-  // Hapus semua cache versi sebelumnya agar tampilan baru langsung tampil
   e.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
@@ -46,11 +45,8 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-  if (e.request.url.includes('firebaseio.com') || e.request.url.includes('cartocdn.com')) {
+  if (e.request.url.includes('firebaseio.com') || e.request.url.includes('tile.openstreetmap.org')) {
     return e.respondWith(fetch(e.request));
   }
-  // Selalu coba ambil data jaringan terlebih dahulu agar file CSS/JS terbaru langsung terpakai
-  e.respondWith(
-    fetch(e.request).catch(() => caches.match(e.request))
-  );
+  e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
 });

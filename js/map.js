@@ -1,5 +1,4 @@
-// js/map.js - Cyberpunk Dark Matter GIS & Holographic Beacons
-
+// js/map.js - OpenStreetMap Bebas API Key + Neon Radar Beacons
 let map = null;
 let markerGroup = null;
 let userMarker = null;
@@ -13,10 +12,10 @@ export function inisialisasiPeta() {
     attributionControl: false
   }).setView(bengkuluCoord, 13);
 
-  // Ganti tile peta ke CartoDB Dark Matter (Tampilan Hitam Cyberpunk Berkelas Dunia)
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  // Menggunakan OpenStreetMap Resmi: 100% Terbuka, Gratis Selamanya, TANPA API Key
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
-    subdomains: 'abcd'
+    subdomains: 'abc'
   }).addTo(map);
 
   markerGroup = L.layerGroup().addTo(map);
@@ -26,19 +25,15 @@ export function inisialisasiPeta() {
   }, 300);
 }
 
-// Bikin Icon Pin Neon Radar Berdenyut
 function buatIconHolografik(status) {
-  let warna = '#10b981'; // Aman (Hijau Neon)
-  let bayangan = 'rgba(16, 185, 129, 0.4)';
+  let warna = '#10b981'; // Aman
   let animasi = 'pulseAman';
 
   if (status === 'kritis') {
-    warna = '#ef4444'; // Kritis (Merah Neon)
-    bayangan = 'rgba(239, 68, 68, 0.6)';
+    warna = '#ef4444'; // Kritis
     animasi = 'pulseKritis';
   } else if (status === 'waspada') {
-    warna = '#f59e0b'; // Waspada (Kuning / Oranye Neon)
-    bayangan = 'rgba(245, 158, 11, 0.5)';
+    warna = '#f59e0b'; // Waspada
     animasi = 'pulseWaspada';
   }
 

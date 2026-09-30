@@ -1166,3 +1166,8 @@ input:focus, select:focus {
   border-radius: 50%;
   box-shadow: 0 0 12px #38bdf8;
 }
+
+/* FILTER GELAP CYBERPUNK UNTUK OPENSTREETMAP (100% BEBAS API KEY) */
+#peta-gis .leaflet-tile-pane {
+  filter: brightness(0.65) invert(1) contrast(3.2) hue-rotate(200deg) saturate(0.25) brightness(0.7) !important;
+}
