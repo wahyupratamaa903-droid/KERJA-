@@ -78,3 +78,33 @@ export function kirimCadanganKeWA(daftarSarana) {
   const urlWa = `https://wa.me/?text=${encodeURIComponent(teksPesan)}`;
   window.open(urlWa, '_blank');
 }
+
+// Integrasi Plugin GitHub Auto-Commit
+import { simpanKeGitHubOtomatis } from './plugins/github-vault.js';
+
+export async function jalankanBackupGitHub(daftarSarana) {
+  let token = localStorage.getItem('devis_gh_token');
+  if (!token) {
+    token = prompt("Masukkan Token GitHub Anda (ghp_...):");
+    if (!token || !token.startsWith("ghp_")) {
+      alert("Token dibatalkan atau tidak valid.");
+      return;
+    }
+    localStorage.setItem('devis_gh_token', token.trim());
+  }
+
+  const konfirmasi = confirm(`Cadangkan ${daftarSarana.length} sarana langsung ke repositori GitHub tanpa Termux?`);
+  if (!konfirmasi) return;
+
+  try {
+    const hasil = await simpanKeGitHubOtomatis(daftarSarana, token);
+    alert(`✅ Berhasil! Data telah tersimpan permanen di GitHub.\nCommit: ${hasil.commit.sha.substring(0, 7)}`);
+  } catch (err) {
+    if (err.message.includes("Bad credentials")) {
+      localStorage.removeItem('devis_gh_token');
+      alert("Token GitHub kedaluwarsa. Silakan masukkan ulang token yang benar.");
+    } else {
+      alert("Gagal mencadangkan ke GitHub: " + err.message);
+    }
+  }
+}

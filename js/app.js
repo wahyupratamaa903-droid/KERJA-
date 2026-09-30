@@ -837,3 +837,12 @@ async function inisialisasiAplikasi() {
 }
 
 inisialisasiAplikasi();
+
+// Event Listener Tombol Brankas GitHub
+import { jalankanBackupGitHub } from './vault.js';
+const btnVaultGithub = document.getElementById('btn-vault-github');
+if (btnVaultGithub) {
+  btnVaultGithub.addEventListener('click', () => {
+    jalankanBackupGitHub(dataSarana);
+  });
+}

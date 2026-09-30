@@ -5,6 +5,7 @@ const ASSETS = [
   './css/style.css',
   './js/app.js',
   './js/vault.js',
+  './js/plugins/github-vault.js',
   './js/config-db.js',
   './js/cloud-sync.js',
   './js/token-calc.js',
