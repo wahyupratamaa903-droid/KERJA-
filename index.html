@@ -4,141 +4,44 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
   <title>Monitoring Sarana Lapangan</title>
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#060911">
-
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
   <link rel="stylesheet" href="css/style.css">
+  <script src="js/kill-cache.js"></script>
 </head>
 <body>
   <div class="wrapper">
     <header class="top-header-bar">
-      <div class="header-brand">
-        <span class="brand-title">PT DEVIS JAYA</span>
-        <span class="live-pill"><span class="live-dot"></span><span id="label-sync-status">Firebase Live</span></span>
-      </div>
+      <div class="header-brand"><span class="brand-title">PT DEVIS JAYA</span><span class="live-pill"><span class="live-dot"></span><span id="label-sync-status">Firebase Live</span></span></div>
       <div class="header-actions">
-        <button type="button" id="btn-buka-vault" class="btn-header-action vault" title="Brankas Cadangan & Mesin Waktu">
-          🛡️ Brankas
-        </button>
-        <button type="button" id="btn-toggle-auth" class="btn-header-action auth" title="Hak Akses Petugas">
-          🔐 Tamu
-        </button>
+        <button id="btn-buka-vault" class="btn-header-action vault">🛡️ Brankas</button>
+        <button id="btn-toggle-auth" class="btn-header-action auth">🔐 Tamu</button>
       </div>
     </header>
 
     <main id="view-sarana" class="tab-view active">
       <section class="panel-statistik">
-        <div class="stat-item">
-          <span class="stat-angka" id="stat-total">0</span>
-          <span class="stat-label">Total Sarana</span>
-        </div>
-        <div class="stat-item danger">
-          <span class="stat-angka" id="stat-isi">0</span>
-          <span class="stat-label">Perlu Diisi</span>
-        </div>
+        <div class="stat-item"><span class="stat-angka" id="stat-total">0</span><span class="stat-label">Total Sarana</span></div>
+        <div class="stat-item danger"><span class="stat-angka" id="stat-isi">0</span><span class="stat-label">Perlu Diisi</span></div>
       </section>
 
-      <button type="button" id="btn-ekspor-wa" class="btn-wa-laporan">Kirim Rekap ke WhatsApp</button>
-
       <div class="toolbar-lapangan">
-        <button type="button" id="btn-tool-rute" class="btn-tool">
-          <span>🧭</span>
-          <span>Rute Urut</span>
-        </button>
-        <button type="button" id="btn-tool-anggaran" class="btn-tool">
-          <span>💰</span>
-          <span>Estimasi</span>
-        </button>
-        <button type="button" id="btn-tool-pdf" class="btn-tool">
-          <span>📄</span>
-          <span>PDF Formal</span>
-        </button>
-        <button type="button" id="btn-tool-jarvis-brief" class="btn-tool" style="border-color: rgba(6, 182, 212, 0.4);">
-          <span>🎙️</span>
-          <span>Brief AI</span>
-        </button>
-        <button type="button" id="btn-tool-kalender" class="btn-tool">
-          <span>⏰</span>
-          <span>Alarm Cek</span>
-        </button>
+        <button id="btn-tool-rute" class="btn-tool"><span>🧭</span><span>Rute Urut</span></button>
+        <button id="btn-tool-anggaran" class="btn-tool"><span>💰</span><span>Estimasi</span></button>
+        <button id="btn-tool-pdf" class="btn-tool"><span>📄</span><span>PDF Formal</span></button>
+        <button id="btn-tool-jarvis-brief" class="btn-tool" style="border-color: rgba(6, 182, 212, 0.4);"><span>🎙️</span><span>Brief AI</span></button>
       </div>
-
-      <input type="file" id="input-file-ocr" accept="image/*" capture="environment" style="display:none;">
-
-      <form id="form-sarana" class="form-box" style="display: none;">
-        <h2 class="form-title">Catat Titik Sarana Baru</h2>
-
-        <div class="form-group">
-          <label for="lokasi">Nama Titik / Lokasi Jalan</label>
-          <input type="text" id="lokasi" placeholder="Contoh: Jl. S. Parman (Dekat Amira)" required>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label for="tipe">Tipe Sarana</label>
-            <select id="tipe">
-              <option value="Billboard">Billboard</option>
-              <option value="Baliho">Baliho</option>
-              <option value="Bando Jalan">Bando Jalan</option>
-              <option value="Neon Box">Neon Box</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label for="jenisLampu">Jenis Lampu</label>
-            <select id="jenisLampu">
-              <option value="FL">FL (Front Light / Luar)</option>
-              <option value="BL">BL (Back Light / Dalam)</option>
-              <option value="NONE">Tanpa Lampu</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="jumlahLampu">Jumlah Titik Lampu</label>
-          <input type="number" id="jumlahLampu" placeholder="Jumlah titik lampu FL" min="0">
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label for="tanggalPengecekan">Tanggal Catat</label>
-            <input type="date" id="tanggalPengecekan" required>
-          </div>
-
-          <div class="form-group">
-            <label for="sisaKwh">Sisa Token (kWh)</label>
-            <div class="input-ocr-group">
-              <input type="number" step="any" id="sisaKwh" placeholder="Contoh: 10542" required>
-              <button type="button" id="btn-scan-form" class="btn-ocr-scan" title="Scan Kamera Meteran">📷 OCR</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="input-koordinat">Titik Koordinat (Bisa Otomatis atau Ketik/Paste)</label>
-          <div class="gps-input-group">
-            <input type="text" id="input-koordinat" placeholder="Contoh: -3.797733, 102.266305">
-            <button type="button" id="btn-ambil-gps" class="btn-gps-auto">GPS Otomatis</button>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="fotoSarana">Dokumentasi Foto (Pilih dari Galeri)</label>
-          <input type="file" id="fotoSarana" accept="image/jpeg,image/png,image/webp" multiple>
-        </div>
-
-        <button type="submit" class="btn-submit">Simpan Sarana Baru</button>
-      </form>
 
       <div class="kontrol-pencarian">
         <h2 class="judul-bagian">Daftar Sarana Lapangan</h2>
         <input type="text" id="input-cari" class="input-cari-jalan" placeholder="Cari nama jalan atau tipe sarana...">
+        
+        <div style="display:flex; gap:6px; margin:8px 0; overflow-x:auto;">
+          <select id="filter-tipe" style="padding:4px; font-size:0.75rem; background:#1e293b; color:#fff; border-radius:4px;"><option value="">Semua Tipe</option><option value="Billboard">Billboard</option><option value="Baliho">Baliho</option></select>
+          <select id="filter-lampu" style="padding:4px; font-size:0.75rem; background:#1e293b; color:#fff; border-radius:4px;"><option value="">Semua Lampu</option><option value="FL">Lampu FL</option><option value="BL">Lampu BL</option></select>
+        </div>
+
         <div class="filter-tabs">
           <button class="tab-filter active" data-filter="semua">Semua</button>
           <button class="tab-filter" data-filter="perlu-isi">Perlu Diisi</button>
@@ -149,252 +52,50 @@
       <div id="daftar-sarana"></div>
     </main>
 
-    <main id="view-peta" class="tab-view">
-      <div class="map-overlay-box">
-        <span style="font-weight:700; color:#fff;">Radar Tiang Kota Bengkulu</span>
-        <div class="map-legend">
-          <span class="leg-item"><span class="leg-dot" style="background:#ef4444;"></span>Kritis</span>
-          <span class="leg-item"><span class="leg-dot" style="background:#f59e0b;"></span>Waspada</span>
-          <span class="leg-item"><span class="leg-dot" style="background:#10b981;"></span>Aman</span>
-        </div>
-      </div>
-      <div id="peta-gis"></div>
-    </main>
+    <main id="view-peta" class="tab-view"><div id="peta-gis"></div></main>
 
     <main id="view-misi" class="tab-view">
       <section class="misi-card">
-        <div class="misi-header">
-          <div>
-            <span class="sub-label">JADWAL PATROLI</span>
-            <h3>Misi Lapangan Hari Ini</h3>
-          </div>
-          <span id="label-tgl-misi" class="badge-tgl">Hari Ini</span>
-        </div>
+        <div class="misi-header"><div><h3>Misi Lapangan Hari Ini</h3></div></div>
         <div id="container-list-misi" class="misi-list-box"></div>
       </section>
-
       <section class="misi-card">
-        <div class="misi-header">
-          <div>
-            <span class="sub-label">BBM MOTOR OPERASIONAL</span>
-            <h3>Plafon Mingguan (Kamis - Rabu)</h3>
-          </div>
-          <span class="badge-bbm-limit">Plafon: Rp 50.000</span>
-        </div>
-
-        <div class="bbm-rentang-box">
-          <span>Periode: <strong id="bbm-rentang-text">Kamis - Rabu</strong></span>
-          <small>Sabtu & Minggu Libur Kerja</small>
-        </div>
-
+        <div class="misi-header"><div><h3>BBM Mingguan</h3></div><span class="badge-bbm-limit">Rp 50.000</span></div>
         <div class="bbm-saldo-box">
-          <div class="bbm-saldo-item">
-            <span class="lbl">Sisa Saldo Bensin:</span>
-            <strong id="bbm-sisa-rp" class="val-sisa">Rp 50.000</strong>
-          </div>
-          <div class="bbm-saldo-item right">
-            <span class="lbl">Sudah Diisi:</span>
-            <span id="bbm-terpakai-rp" class="val-pakai">Rp 0</span>
-          </div>
+          <div class="bbm-saldo-item"><span class="lbl">Sisa Saldo:</span><strong id="bbm-sisa-rp" class="val-sisa">Rp 50.000</strong></div>
+          <div class="bbm-saldo-item right"><span class="lbl">Terpakai:</span><span id="bbm-terpakai-rp" class="val-pakai">Rp 0</span></div>
         </div>
-
-        <div class="bbm-progress-bg">
-          <div id="bbm-progress-fill" class="bbm-progress-fill" style="width: 100%;"></div>
-        </div>
-
-        <div id="box-aksi-bbm" style="display: none;">
+        <div class="bbm-progress-bg"><div id="bbm-progress-fill" class="bbm-progress-fill" style="width: 100%;"></div></div>
+        <div id="box-aksi-bbm">
           <div class="bbm-quick-buttons">
-            <button type="button" class="btn-preset-bbm" data-nominal="20000">+ Isi Rp 20.000</button>
-            <button type="button" class="btn-preset-bbm" data-nominal="30000">+ Isi Rp 30.000</button>
-            <button type="button" class="btn-preset-bbm" data-nominal="50000">+ Isi Rp 50.000</button>
+            <button class="btn-preset-bbm" data-nominal="20000">+ Rp 20rb</button>
+            <button class="btn-preset-bbm" data-nominal="50000">+ Rp 50rb</button>
           </div>
-
-          <form id="form-catat-bbm" class="bbm-quick-form">
-            <input type="number" id="input-nominal-bbm" placeholder="Nominal lain (Rp)...">
-            <button type="submit" class="btn-catat-bbm">Catat</button>
-          </form>
+          <form id="form-catat-bbm" class="bbm-quick-form"><input type="number" id="input-nominal-bbm"><button type="submit" class="btn-catat-bbm">Catat</button></form>
         </div>
-
-        <div id="list-riwayat-bbm" class="bbm-riwayat-list"></div>
+        <div id="list-riwayat-bbm" class="bbm-riwayat-list" style="margin-top:12px;"></div>
       </section>
     </main>
   </div>
 
-  <!-- FLOATING DEVIS JARVIS MIC & HUD STATUS -->
-  <div id="hud-voice" class="hud-voice-banner">
-    <span class="live-dot" style="background:#ef4444; box-shadow:0 0 8px #ef4444;"></span>
-    <span id="teks-hud-voice">Devis Jarvis mendengarkan...</span>
-  </div>
+  <div id="hud-voice" class="hud-voice-banner"><span class="live-dot" style="background:#ef4444;"></span><span id="teks-hud-voice">Devis Jarvis mendengarkan...</span></div>
+  <button id="fab-voice-cmd" class="fab-jarvis-mic">🎙️</button>
 
-  <button type="button" id="fab-voice-cmd" class="fab-jarvis-mic" title="Bicara dengan Devis Jarvis">
-    🎙️️
-  </button>
-
-  <div id="modal-vault" class="modal-backdrop">
-    <div class="modal-konten" style="max-width: 380px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-        <h3 style="color:#fff; font-size:1rem;">🛡️️ Brankas & Keamanan Data</h3>
-        <button type="button" id="btn-tutup-vault" style="background:transparent; border:none; color:#94a3b8; font-size:1.2rem; cursor:pointer;">✕</button>
-      </div>
-
-      <div class="vault-section">
-        <div class="vault-section-title">📦 Cadangan Fisik Mandiri</div>
-        <div class="vault-btn-grid">
-          <button type="button" id="btn-vault-github" class="btn-vault-action" style="grid-column: span 2; background: linear-gradient(135deg, #1e293b, #090d16); border-color: #3b82f6;">
-            <span class="icon">🚀</span>
-            <span>Simpan ke GitHub (Tanpa Termux)</span>
-          </button>
-          <button type="button" id="btn-vault-unduh" class="btn-vault-action">
-            <span class="icon">💾</span>
-            <span>Unduh Cadangan (.json)</span>
-          </button>
-          <button type="button" id="btn-vault-wa" class="btn-vault-action">
-            <span class="icon">📲</span>
-            <span>Kirim Teks ke WhatsApp</span>
-          </button>
-        </div>
-        <div style="margin-top: 8px;">
-          <input type="file" id="input-file-restore" accept=".json" style="display:none;">
-          <button type="button" id="btn-vault-pulihkan-file" class="btn-vault-action" style="width:100%; flex-direction:row; justify-content:center;">
-            <span class="icon">📥</span>
-            <span>Pulihkan dari File Cadangan (.json)</span>
-          </button>
-        </div>
-      </div>
-
-      <div class="vault-section">
-        <div class="vault-section-title">⏱️️ Mesin Waktu (Snapshot Otomatis)</div>
-        <p style="font-size:0.7rem; color:#94a3b8; margin-bottom:8px;">Pilih titik waktu untuk mengembalikan data jika terjadi salah edit atau hapus.</p>
-        <div id="kontainer-snapshot" class="snapshot-list">
-          <span style="color:#64748b; font-size:0.72rem;">Belum ada riwayat snapshot.</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div id="modal-auth" class="modal-backdrop">
-    <div class="modal-konten" style="max-width: 340px; text-align: center;">
-      <div style="font-size: 2.2rem; margin-bottom: 6px;">🔐</div>
-      <h3 style="color:#fff; margin-bottom: 4px;">Akses Petugas Lapangan</h3>
-      <p style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 16px;">
-        Masukkan PIN Petugas PT DEVIS JAYA untuk membuka hak kelola sarana.
-      </p>
-
-      <form id="form-auth-pin">
-        <input type="password" id="input-pin-petugas" placeholder="PIN..." maxlength="6" 
-               style="text-align: center; font-size: 1.4rem; letter-spacing: 6px; margin-bottom: 12px;" required>
-
-        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 16px; font-size: 0.78rem; color: #cbd5e1;">
-          <input type="checkbox" id="check-ingat-perangkat" checked style="width: 16px; height: 16px;">
-          <label for="check-ingat-perangkat" style="margin-bottom:0; cursor:pointer;">Ingat di HP Ini Selamanya</label>
-        </div>
-
-        <div style="display: flex; gap: 8px;">
-          <button type="button" id="btn-tutup-auth" class="btn-hapus" style="flex:1;">Batal</button>
-          <button type="submit" class="btn-submit" style="flex:1;">Verifikasi</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <div id="modal-update" class="modal-backdrop">
-    <div class="modal-konten">
-      <h3 style="margin-bottom: 6px;">Catat Token Baru</h3>
-      <p id="nama-sarana-modal" style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 12px;"></p>
-
-      <form id="form-update">
-        <div class="form-group">
-          <label for="modalTanggal">Tanggal Cek Baru</label>
-          <input type="date" id="modalTanggal" required>
-        </div>
-
-        <div class="form-group">
-          <label for="modalKwh">Sisa Token Sekarang (kWh)</label>
-          <div class="input-ocr-group">
-            <input type="number" step="any" id="modalKwh" placeholder="Contoh: 25000" required>
-            <button type="button" id="btn-scan-modal" class="btn-ocr-scan" title="Scan Kamera">📷 OCR</button>
-          </div>
-        </div>
-
-        <div style="display: flex; gap: 8px; margin-top: 14px;">
-          <button type="button" id="btn-tutup-modal" class="btn-hapus">Batal</button>
-          <button type="submit" class="btn-submit">Simpan</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <div id="modal-anggaran" class="modal-backdrop">
-    <div class="modal-konten">
-      <h3 style="margin-bottom: 6px;">Estimasi Anggaran Token</h3>
-      <p style="font-size:0.8rem; color:#94a3b8; margin-bottom:12px;">Perhitungan kebutuhan dana pengisian sarana kritis ke PLN.</p>
-      <div id="konten-rincian-anggaran"></div>
-      <div style="margin-top:16px;">
-        <button type="button" id="btn-tutup-anggaran" class="btn-submit">Tutup</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="modal-edit" class="modal-backdrop">
-    <div class="modal-konten">
-      <h3 style="margin-bottom: 12px;">Edit Data Sarana</h3>
-      <form id="form-edit">
-        <div class="form-group">
-          <label for="edit-lokasi">Nama Titik / Lokasi Jalan</label>
-          <input type="text" id="edit-lokasi" required>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label for="edit-tipe">Tipe Sarana</label>
-            <select id="edit-tipe">
-              <option value="Billboard">Billboard</option>
-              <option value="Baliho">Baliho</option>
-              <option value="Bando Jalan">Bando Jalan</option>
-              <option value="Neon Box">Neon Box</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="edit-jenisLampu">Jenis Lampu</label>
-            <select id="edit-jenisLampu">
-              <option value="FL">FL (Front Light)</option>
-              <option value="BL">BL (Back Light)</option>
-              <option value="NONE">Tanpa Lampu</option>
-            </select>
-          </div>
-        </div>
-        <div class="form-group">
-          <label for="edit-jumlahLampu">Jumlah Titik Lampu</label>
-          <input type="number" id="edit-jumlahLampu" min="0">
-        </div>
-        <div class="form-group">
-          <label for="edit-koordinat">Koordinat (Bisa Paste: -3.797733, 102.266305)</label>
-          <input type="text" id="edit-koordinat">
-        </div>
-        <div style="display: flex; gap: 8px; margin-top: 14px;">
-          <button type="button" id="btn-tutup-edit" class="btn-hapus">Batal</button>
-          <button type="submit" class="btn-submit">Simpan Perubahan</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <div id="modal-foto" class="modal-backdrop">
-    <img id="img-zoom" class="modal-foto-isi" alt="Zoom Foto">
-  </div>
+  <div id="modal-anggaran" class="modal-backdrop"><div class="modal-konten">
+    <h3>Estimasi Anggaran Token</h3>
+    <div id="konten-rincian-anggaran"></div>
+    <button id="btn-tutup-anggaran" style="margin-top:12px;">Tutup</button>
+  </div></div>
+  
+  <div id="modal-auth" class="modal-backdrop"><div class="modal-konten">
+    <h3>Akses Petugas</h3>
+    <form id="form-auth-pin"><input type="password" id="input-pin-petugas" required><button type="submit">Verifikasi</button></form>
+  </div></div>
 
   <nav class="nav-bottom">
-    <button type="button" class="nav-item active" data-tab="view-sarana">
-      <span style="font-size:1.1rem;">📍</span>
-      <span>Sarana</span>
-    </button>
-    <button type="button" class="nav-item" data-tab="view-peta">
-      <span style="font-size:1.1rem;">🗺️</span>
-      <span>Peta Radar</span>
-    </button>
-    <button type="button" class="nav-item" data-tab="view-misi">
-      <span style="font-size:1.1rem;">📋</span>
-      <span>Misi Kerja</span>
-    </button>
+    <button class="nav-item active" data-tab="view-sarana">📍 Sarana</button>
+    <button class="nav-item" data-tab="view-peta">🗺️ Peta Radar</button>
+    <button class="nav-item" id="nav-tab-misi" data-tab="view-misi">📋 Misi Kerja</button>
   </nav>
 
   <script type="module" src="js/app.js"></script>
