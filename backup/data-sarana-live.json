@@ -1,0 +1,353 @@
+[
+  {
+    "id": 1790732902447,
+    "jenisLampu": "FL",
+    "jumlahLampu": 2,
+    "koordinat": {
+      "lat": -3.826282,
+      "lng": 102.303207
+    },
+    "lokasi": "Jl. Adam Malik - jl. mangga Bkl KM 8",
+    "riwayatToken": [
+      {
+        "kwh": 455839,
+        "tanggal": "2026-08-04"
+      },
+      {
+        "kwh": 453682,
+        "tanggal": "2026-08-24"
+      },
+      {
+        "kwh": 451279,
+        "tanggal": "2026-09-29"
+      }
+    ],
+    "tipe": "Billboard"
+  },
+  {
+    "id": 1,
+    "jenisLampu": "FL",
+    "jumlahLampu": 1,
+    "koordinat": {
+      "lat": -3.789538,
+      "lng": 102.308001
+    },
+    "lokasi": "Jl. Danau simp. brimob bkl",
+    "riwayatToken": [
+      {
+        "kwh": 39475,
+        "tanggal": "2026-09-08"
+      },
+      {
+        "kwh": 38032,
+        "tanggal": "2026-09-21"
+      }
+    ],
+    "tipe": "Billboard"
+  },
+  {
+    "id": 2,
+    "jenisLampu": "FL",
+    "jumlahLampu": 8,
+    "koordinat": {
+      "lat": -3.836832,
+      "lng": 102.310522
+    },
+    "lokasi": "jl. P. Natadirja-Jl. Adam Malik (simpang polda) kota Bkl",
+    "riwayatToken": [
+      {
+        "kwh": 17323,
+        "tanggal": "2026-08-03"
+      },
+      {
+        "kwh": 9543,
+        "tanggal": "2026-08-24"
+      },
+      {
+        "kwh": 41330,
+        "tanggal": "2026-09-21"
+      }
+    ],
+    "tipe": "Billboard"
+  },
+  {
+    "id": 3,
+    "jenisLampu": "BL",
+    "jumlahLampu": 0,
+    "koordinat": {
+      "lat": -3.767483,
+      "lng": 102.26982
+    },
+    "lokasi": "Jl. Lintas Barat Sumatera (TB Ken Jaya), Kota Bengkulu",
+    "riwayatToken": [
+      {
+        "kwh": 9420,
+        "tanggal": "2026-09-21"
+      }
+    ],
+    "tipe": "Billboard"
+  },
+  {
+    "id": 4,
+    "jenisLampu": "FL",
+    "jumlahLampu": 2,
+    "koordinat": {
+      "lat": -3.831999,
+      "lng": 102.300257
+    },
+    "lokasi": "Simpang 4 Lingkar Barat (dkt Dealer Honda) bkl",
+    "riwayatToken": [
+      {
+        "kwh": 36582,
+        "tanggal": "2026-08-24"
+      },
+      {
+        "kwh": 33182,
+        "tanggal": "2026-09-22"
+      }
+    ],
+    "tipe": "Billboard"
+  },
+  {
+    "id": 5,
+    "jenisLampu": "FL",
+    "jumlahLampu": 2,
+    "koordinat": {
+      "lat": -3.822063,
+      "lng": 102.291077
+    },
+    "lokasi": "Simpang 4 Ciliwung",
+    "riwayatToken": [
+      {
+        "kwh": 12462,
+        "tanggal": "2026-09-21"
+      }
+    ],
+    "tipe": "Billboard"
+  },
+  {
+    "id": 6,
+    "jenisLampu": "FL",
+    "jumlahLampu": 2,
+    "koordinat": {
+      "lat": -3.81505,
+      "lng": 102.281554
+    },
+    "lokasi": "Jl. Indra giri padang harapan bkl",
+    "riwayatToken": [
+      {
+        "kwh": 730925,
+        "tanggal": "2026-09-21"
+      }
+    ],
+    "tipe": "Billboard"
+  },
+  {
+    "id": 7,
+    "jenisLampu": "FL",
+    "jumlahLampu": 2,
+    "koordinat": {
+      "lat": -3.813652,
+      "lng": 102.288062
+    },
+    "lokasi": "simpang padang harapan (dpan kantor KASIPA) kota Bkl",
+    "riwayatToken": [
+      {
+        "kwh": 48684,
+        "tanggal": "2026-09-21"
+      }
+    ],
+    "tipe": "Billboard"
+  },
+  {
+    "id": 8,
+    "jenisLampu": "FL",
+    "jumlahLampu": 2,
+    "koordinat": {
+      "lat": -3.813263,
+      "lng": 102.287778
+    },
+    "lokasi": "Jl.Sutoyo Simpang 4 Harapan (depan sate pak kumis)",
+    "riwayatToken": [
+      {
+        "kwh": 26158,
+        "tanggal": "2026-09-21"
+      }
+    ],
+    "tipe": "Billboard"
+  },
+  {
+    "id": 9,
+    "jenisLampu": "FL",
+    "jumlahLampu": 2,
+    "koordinat": {
+      "lat": -3.831939,
+      "lng": 102.283706
+    },
+    "lokasi": "Jl. pariwisata pantai panjang (dpn pasir putih) bkl",
+    "riwayatToken": [
+      {
+        "kwh": 8770,
+        "tanggal": "2026-09-21"
+      }
+    ],
+    "tipe": "Billboard"
+  },
+  {
+    "id": 10,
+    "jenisLampu": "FL",
+    "jumlahLampu": 2,
+    "koordinat": {
+      "lat": -3.8098,
+      "lng": 102.273103
+    },
+    "lokasi": "Jl. Kenanga bkl",
+    "riwayatToken": [
+      {
+        "kwh": 845715,
+        "tanggal": "2026-09-21"
+      }
+    ],
+    "tipe": "Billboard"
+  },
+  {
+    "id": 11,
+    "jenisLampu": "FL",
+    "jumlahLampu": 2,
+    "koordinat": {
+      "lat": -3.801493,
+      "lng": 102.256949
+    },
+    "lokasi": "Jl. Samudra Kota Bengkulu",
+    "riwayatToken": [
+      {
+        "kwh": 24622,
+        "tanggal": "2026-09-21"
+      }
+    ],
+    "tipe": "Billboard"
+  },
+  {
+    "id": 12,
+    "jenisLampu": "FL",
+    "jumlahLampu": 2,
+    "koordinat": {
+      "lat": -3.813662,
+      "lng": 102.268911
+    },
+    "lokasi": "jl. Pariwisata kota",
+    "riwayatToken": [
+      {
+        "kwh": 24575,
+        "tanggal": "2026-09-21"
+      }
+    ],
+    "tipe": "Billboard"
+  },
+  {
+    "id": 13,
+    "jenisLampu": "FL",
+    "jumlahLampu": 4,
+    "koordinat": {
+      "lat": -3.797193,
+      "lng": 102.265482
+    },
+    "lokasi": "Jl. Suprapto Simp. 5 (Diatas Ruko) BKL",
+    "riwayatToken": [
+      {
+        "kwh": 33512,
+        "tanggal": "2026-08-24"
+      }
+    ],
+    "tipe": "Billboard"
+  },
+  {
+    "id": 14,
+    "jenisLampu": "BL",
+    "jumlahLampu": 0,
+    "koordinat": {
+      "lat": -3.798737,
+      "lng": 102.272222
+    },
+    "lokasi": "Jl. S. Parman (simp Skip Dekat TIKI) bengkulu",
+    "riwayatToken": [
+      {
+        "kwh": 680555,
+        "tanggal": "2026-09-21"
+      }
+    ],
+    "tipe": "Billboard"
+  },
+  {
+    "id": 15,
+    "jenisLampu": "FL",
+    "jumlahLampu": 2,
+    "koordinat": {
+      "lat": -3.80187,
+      "lng": 102.275193
+    },
+    "lokasi": "Lingkar Jl. S. Parman (dekat kantor BPS) kota Bengkulu",
+    "riwayatToken": [
+      {
+        "kwh": 18597,
+        "tanggal": "2026-09-21"
+      }
+    ],
+    "tipe": "Billboard"
+  },
+  {
+    "id": 16,
+    "jenisLampu": "FL",
+    "jumlahLampu": 2,
+    "koordinat": {
+      "lat": -3.794328,
+      "lng": 102.278078
+    },
+    "lokasi": "Jl. Meranti Sawah Lebar",
+    "riwayatToken": [
+      {
+        "kwh": 87586,
+        "tanggal": "2026-09-21"
+      }
+    ],
+    "tipe": "Billboard"
+  },
+  {
+    "id": 17,
+    "jenisLampu": "FL",
+    "jumlahLampu": 2,
+    "koordinat": {
+      "lat": -3.777054,
+      "lng": 102.274398
+    },
+    "lokasi": "Jl.Kalimantan Rawa Makmur",
+    "riwayatToken": [
+      {
+        "kwh": 28597,
+        "tanggal": "2026-09-21"
+      }
+    ],
+    "tipe": "Billboard"
+  },
+  {
+    "id": 18,
+    "jenisLampu": "FL",
+    "jumlahLampu": 8,
+    "koordinat": {
+      "lat": -3.825805,
+      "lng": 102.302524
+    },
+    "lokasi": "perempatan Jl. P. Natadirja - Jl. Adam malik kota bengkulu",
+    "riwayatToken": [
+      {
+        "kwh": 8713,
+        "tanggal": "2026-09-18"
+      },
+      {
+        "kwh": 50042,
+        "tanggal": "2026-09-18"
+      }
+    ],
+    "tipe": "Billboard"
+  }
+]
