@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sarana-cache-v16';
+const CACHE_NAME = 'sarana-cache-v17';
 const ASSETS = [
   './',
   './index.html',
@@ -22,6 +22,7 @@ const ASSETS = [
   './js/plugins/github-vault.js',
   './js/plugins/power-engine.js',
   './js/plugins/fuel-optimizer.js',
+  './js/plugins/parallax-3d.js',
   './manifest.json'
 ];
 
