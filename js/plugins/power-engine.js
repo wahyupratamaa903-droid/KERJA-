@@ -1,5 +1,5 @@
-// js/plugins/power-engine.js - AI Power-Profiling & Smart Consumption Engine
-// Menganalisis seluruh riwayat kWh secara mendalam tanpa merusak data mentah
+// js/plugins/power-engine.js - Mesin Estimasi Presisi Tinggi (Real-Time Decay & Hybrid Model)
+// 100% Bersih: Tanpa tuduhan salah input, tanpa kotak merah, membaca seluruh riwayat
 
 export function analisaDayaDanEstimasi(riwayatToken, jumlahLampu = 0, jenisLampu = 'FL') {
   if (!riwayatToken || riwayatToken.length === 0) {
@@ -10,10 +10,8 @@ export function analisaDayaDanEstimasi(riwayatToken, jumlahLampu = 0, jenisLampu
       tanggalHabis: '-',
       pesan: 'Belum ada catatan riwayat token.',
       wattTerdeteksi: 0,
-      wattPerLampu: 0,
-      statusKelistrikan: 'NORMAL',
-      diagnosa: 'Belum ada data',
-      tingkatKeyakinan: '0%'
+      sisaKwhEstimasiSekarang: 0,
+      hariBerlalu: 0
     };
   }
 
@@ -28,23 +26,17 @@ export function analisaDayaDanEstimasi(riwayatToken, jumlahLampu = 0, jenisLampu
       rataPerHari: 0,
       estimasiHari: 999,
       tanggalHabis: 'Menunggu Cek ke-2',
-      pesan: 'Catatan perdana. Diperlukan 1 kali pengecekan lagi untuk mengaktifkan AI profil daya.',
+      pesan: 'Catatan perdana. Diperlukan 1 kali pengecekan lagi untuk menghitung laju harian.',
       terakhir: catatanTerakhir,
       sebelumnya: null,
       wattTerdeteksi: 0,
-      wattPerLampu: 0,
-      statusKelistrikan: 'MENUNGGU_DATA',
-      diagnosa: 'Perlu minimal 2 kali pencatatan untuk membaca beban daya lampu.',
-      tingkatKeyakinan: '10%'
+      sisaKwhEstimasiSekarang: Number(catatanTerakhir.kwh),
+      hariBerlalu: 0
     };
   }
 
   // 2. Evaluasi seluruh interval riwayat untuk memisahkan Konsumsi Murni vs Top-Up
   const daftarInterval = [];
-  let totalDeltaKwh = 0;
-  let totalHariOperasional = 0;
-  let eventTopUpTerdeteksi = false;
-
   for (let i = 1; i < historiUrut.length; i++) {
     const awal = historiUrut[i - 1];
     const akhir = historiUrut[i];
@@ -57,137 +49,87 @@ export function analisaDayaDanEstimasi(riwayatToken, jumlahLampu = 0, jenisLampu
     const kwhAkhir = Number(akhir.kwh);
 
     if (kwhAkhir > kwhAwal) {
-      // Terjadi Pengisian Ulang Token PLN (Top-Up)
-      eventTopUpTerdeteksi = true;
-      daftarInterval.push({
-        jenis: 'TOP_UP',
-        tglAwal: awal.tanggal,
-        tglAkhir: akhir.tanggal,
-        selisihHari,
-        deltaKwh: kwhAkhir - kwhAwal
-      });
+      // Peristiwa Pengisian Ulang Token PLN (Top-Up)
+      daftarInterval.push({ jenis: 'TOP_UP', deltaKwh: kwhAkhir - kwhAwal, selisihHari });
     } else {
       // Konsumsi Pemakaian Listrik Normal
       const deltaPakai = kwhAwal - kwhAkhir;
-      const lajuPerHari = deltaPakai / selisihHari;
-
-      daftarInterval.push({
-        jenis: 'KONSUMSI',
-        tglAwal: awal.tanggal,
-        tglAkhir: akhir.tanggal,
-        selisihHari,
-        deltaKwh: deltaPakai,
-        lajuPerHari
-      });
-
-      totalDeltaKwh += deltaPakai;
-      totalHariOperasional += selisihHari;
+      const laju = deltaPakai / selisihHari;
+      daftarInterval.push({ jenis: 'KONSUMSI', deltaKwh: deltaPakai, selisihHari, lajuPerHari: laju });
     }
   }
 
-  // Ambil hanya interval konsumsi yang valid
+  // 3. Kalkulasi Laju Harian Berbobot Waktu (Weighted Recency Average)
   const intervalKonsumsi = daftarInterval.filter(x => x.jenis === 'KONSUMSI');
-
-  // 3. Deteksi Gejala Blackout / Lampu Padam Total (Sisa kWh tidak berkurang sama sekali)
-  const intervalTerakhir = daftarInterval[daftarInterval.length - 1];
-  let isBlackout = false;
-  if (intervalTerakhir && intervalTerakhir.jenis === 'KONSUMSI' && intervalTerakhir.deltaKwh === 0 && intervalTerakhir.selisihHari >= 2) {
-    isBlackout = true;
-  }
-
-  // 4. Kalkulasi Laju Harian Berbobot Waktu (Weighted Recency Average)
-  let lajuHarianFinal = 0;
+  let lajuHarian = 0;
 
   if (intervalKonsumsi.length === 0) {
-    // Jika semua interval adalah top-up, gunakan patokan standar
-    lajuHarianFinal = 15;
+    // Jika semua data adalah top-up, gunakan baseline fisik lampu
+    const jml = (jenisLampu === 'FL' && Number(jumlahLampu) > 0) ? Number(jumlahLampu) : 2;
+    lajuHarian = jml * 2.5; // Estimasi wajar per lampu
   } else if (intervalKonsumsi.length === 1) {
-    lajuHarianFinal = intervalKonsumsi[0].lajuPerHari;
+    lajuHarian = intervalKonsumsi[0].lajuPerHari;
   } else {
-    // Multi-interval: Beri bobot lebih tinggi pada data konsumsi paling mutakhir
+    // Pembobotan eksponensial halus: interval terbaru diberi pengaruh lebih besar
     let totalBobot = 0;
-    let akumulasiLaju = 0;
-
-    intervalKonsumsi.forEach((item, index) => {
-      // Interval lebih baru memiliki faktor pengali bobot lebih tinggi
-      const bobot = (index + 1) * 1.5;
-      akumulasiLaju += item.lajuPerHari * bobot;
+    let akumulasi = 0;
+    intervalKonsumsi.forEach((item, idx) => {
+      const bobot = Math.pow(idx + 1, 1.3);
+      akumulasi += item.lajuPerHari * bobot;
       totalBobot += bobot;
     });
-
-    lajuHarianFinal = akumulasiLaju / totalBobot;
+    lajuHarian = akumulasi / totalBobot;
   }
 
-  // Jaga agar laju tidak negatif atau nol agar pembagian tidak crash
-  lajuHarianFinal = Math.max(0.1, Number(lajuHarianFinal.toFixed(2)));
+  // Jaga angka laju agar tetap positif dan rasional
+  lajuHarian = Math.max(0.1, Number(lajuHarian.toFixed(2)));
+  const estimasiWatt = Math.round((lajuHarian / 12) * 1000); // Beban 12 jam malam
 
-  // 5. Analisa Beban Watt Listrik Nyata (Standar 12 Jam Operasi per Malam)
-  // Daya (Watt) = (kWh per hari / 12 jam) * 1000
-  const estimasiTotalWatt = Math.round((lajuHarianFinal / 12) * 1000);
-  const jmlLampuEfektif = (jenisLampu === 'FL' && Number(jumlahLampu) > 0) ? Number(jumlahLampu) : 1;
-  const wattPerTitik = Math.round(estimasiTotalWatt / jmlLampuEfektif);
+  // 4. Kompensasi Hari Berjalan Nyata (Real-Time Decay Gap)
+  const tglCekTerakhir = new Date(catatanTerakhir.tanggal);
+  const tglHariIni = new Date();
+  // Hitung selisih hari murni dari tanggal cek s/d hari ini
+  const diffWaktu = tglHariIni.getTime() - tglCekTerakhir.getTime();
+  const hariBerlalu = Math.max(0, Math.floor(diffWaktu / (1000 * 60 * 60 * 24)));
 
-  // 6. Diagnosa Cerdas Kelistrikan & Anomali
-  let statusKelistrikan = 'NORMAL';
-  let diagnosa = `Beban operasional terpantau normal (±${wattPerTitik}W/lampu).`;
-  let isAnomali = false;
+  const kwhTercatat = Number(catatanTerakhir.kwh);
+  const perkiraanPakaiBerjalan = hariBerlalu * lajuHarian;
+  const sisaKwhSekarang = Math.max(0, Number((kwhTercatat - perkiraanPakaiBerjalan).toFixed(1)));
 
-  if (isBlackout) {
-    statusKelistrikan = 'BLACKOUT';
-    diagnosa = `⚠️ INDIKASI PADAM: Token tidak berkurang selama ${intervalTerakhir.selisihHari} hari. Periksa MCB boks atau timer PLN.`;
-  } else if (wattPerTitik > 400 && jenisLampu === 'FL') {
-    statusKelistrikan = 'ARUS_BOCOR';
-    diagnosa = `🔥 BEBAN TINGGI: Konsumsi terhitung ±${wattPerTitik}W/lampu (melebihi standar). Waspada kabel lecet atau korsleting.`;
-    isAnomali = true;
-  } else if (wattPerTitik < 30 && jenisLampu === 'FL' && lajuHarianFinal > 0.5) {
-    statusKelistrikan = 'LAMPU_MATI_SEBAGIAN';
-    diagnosa = `💡 BEBAN RENDAH: Konsumsi hanya ±${wattPerTitik}W/lampu. Kemungkinan ada sebagian lampu sorot yang putus.`;
-  }
+  // 5. Estimasi Hari Habis Presisi
+  const estimasiHari = Math.max(0, Math.floor(sisaKwhSekarang / lajuHarian));
 
-  // 7. Estimasi Habis Presisi Berdasarkan Profil Daya Terkalibrasi
-  const sisaKwhSekarang = Number(catatanTerakhir.kwh);
-  const estimasiHari = isBlackout ? 999 : Math.max(0, Math.floor(sisaKwhSekarang / lajuHarianFinal));
-
-  // Hitung Tanggal Habis Nyata
   const tglTarget = new Date();
   tglTarget.setDate(tglTarget.getDate() + estimasiHari);
-  const tanggalHabisStr = isBlackout ? 'Tertahan (Lampu Mati)' : tglTarget.toLocaleDateString('id-ID', {
+  const tanggalHabis = tglTarget.toLocaleDateString('id-ID', {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
     year: 'numeric'
   });
 
-  // Tentukan Status Warna Kritis / Waspada / Aman
+  // Tentukan status normal berdasarkan sisa hari riil
   let status = 'aman';
-  if (isBlackout) {
-    status = 'waspada';
-  } else if (estimasiHari <= 3 || sisaKwhSekarang <= 15) {
+  if (estimasiHari <= 3 || sisaKwhSekarang <= 15) {
     status = 'kritis';
   } else if (estimasiHari <= 7 || sisaKwhSekarang <= 35) {
     status = 'waspada';
   }
 
-  // Tingkat Keyakinan AI (Berdasarkan jumlah riwayat data yang sudah dipelajari)
-  const tingkatKeyakinan = historiUrut.length >= 4 ? '95% (Sangat Akurat)' : historiUrut.length === 3 ? '80% (Akurat)' : '65% (Sedang)';
+  const intervalTerakhir = daftarInterval[daftarInterval.length - 1];
 
   return {
     status,
-    sisaKwh: sisaKwhSekarang,
-    rataPerHari: lajuHarianFinal,
+    sisaKwhTercatat: kwhTercatat,
+    sisaKwhEstimasiSekarang: sisaKwhSekarang,
+    hariBerlalu,
+    rataPerHari: lajuHarian,
     estimasiHari,
-    tanggalHabis: tanggalHabisStr,
+    tanggalHabis,
     terakhir: catatanTerakhir,
     sebelumnya: catatanSebelumnya,
     isTopUp: intervalTerakhir && intervalTerakhir.jenis === 'TOP_UP',
-    isBlackout,
-    isAnomali,
-    wattTerdeteksi: estimasiTotalWatt,
-    wattPerLampu: wattPerTitik,
-    statusKelistrikan,
-    diagnosa,
-    tingkatKeyakinan,
-    totalIntervalDianalisa: intervalKonsumsi.length,
-    keteranganPemakaian: `Konsumsi AI: ${lajuHarianFinal} kWh/hr (Beban: ±${estimasiTotalWatt} Watt)`
+    wattTerdeteksi: estimasiWatt,
+    keteranganPemakaian: `Laju: ${lajuHarian} kWh/hr (Beban: ±${estimasiWatt} Watt)`
   };
 }

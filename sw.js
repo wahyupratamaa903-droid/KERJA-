@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sarana-cache-v19';
+const CACHE_NAME = 'sarana-cache-v21';
 const ASSETS = [
   './',
   './index.html',
@@ -48,5 +48,7 @@ self.addEventListener('fetch', (e) => {
   if (e.request.url.includes('firebaseio.com') || e.request.url.includes('tile.openstreetmap.org')) {
     return e.respondWith(fetch(e.request));
   }
-  e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+  e.respondWith(
+    fetch(e.request).catch(() => caches.match(e.request))
+  );
 });
