@@ -6,6 +6,7 @@ const ASSETS = [
   './js/app.js',
   './js/vault.js',
   './js/plugins/github-vault.js',
+  './js/plugins/power-engine.js',
   './js/config-db.js',
   './js/cloud-sync.js',
   './js/token-calc.js',
