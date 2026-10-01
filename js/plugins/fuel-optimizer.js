@@ -1,10 +1,10 @@
-// js/plugins/fuel-optimizer.js - Presisi Tinggi AI Fuel-Route Optimizer (TSP 2-Opt & Faktor Aspal)
+// js/plugins/fuel-optimizer.js - Presisi Tinggi AI Fuel-Route Optimizer
 const HARGA_PERTALITE = 10000;
-const KM_PER_LITER_BEAT = 52; // Konsumsi realistis Honda Beat 110cc
-const FAKTOR_JALANAN_BENGKULU = 1.35; // Koreksi kelokan jalan aspal vs garis lurus udara
+const KM_PER_LITER_BEAT = 52; 
+const FAKTOR_JALANAN_BENGKULU = 1.35; 
 
 function hitungJarakLurus(lat1, lon1, lat2, lon2) {
-  const R = 6371; // km
+  const R = 6371; 
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
   const a = 
@@ -12,10 +12,9 @@ function hitungJarakLurus(lat1, lon1, lat2, lon2) {
     Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
     Math.sin(dLon/2) * Math.sin(dLon/2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c * FAKTOR_JALANAN_BENGKULU; // Jarak aspal riil
+  return R * c * FAKTOR_JALANAN_BENGKULU;
 }
 
-// Algoritma Heuristik 2-Opt untuk Menghilangkan Jalur Zig-Zag / Bersilangan
 function optimasiJalur2Opt(ruteAwal, posAwal) {
   if (ruteAwal.length <= 2) return ruteAwal;
   let urutan = [...ruteAwal];
@@ -37,7 +36,6 @@ function optimasiJalur2Opt(ruteAwal, posAwal) {
     iterasi++;
     for (let i = 0; i < urutan.length - 1; i++) {
       for (let k = i + 1; k < urutan.length; k++) {
-        // Balikkan sub-rute antara index i dan k
         const variasiBaru = [
           ...urutan.slice(0, i),
           ...urutan.slice(i, k + 1).reverse(),
@@ -85,7 +83,6 @@ export function optimasiRuteBBM(daftarSarana, posisiUser, fnHitungPrediksi, hany
         isWajib = (info.status === 'kritis' || info.status === 'waspada');
       }
 
-      // Periksa apakah masuk target misi hari ini (misal HMS: Adam Malik, Skip, Rawa Makmur, Brimob)
       const namaLokasi = s.lokasi.toLowerCase();
       const isTargetMisi = namaLokasi.includes('adam malik') || namaLokasi.includes('skip') || namaLokasi.includes('rawa makmur') || namaLokasi.includes('brimob');
       if (isTargetMisi) isWajib = true;
@@ -96,7 +93,6 @@ export function optimasiRuteBBM(daftarSarana, posisiUser, fnHitungPrediksi, hany
     });
 
     kandidat = [...prioritasList];
-    // Jika titik wajib sedikit, ambil titik terdekat tambahan hingga minimal 5 titik patroli
     if (kandidat.length < 5) {
       cadanganList.sort((a, b) => {
         const da = hitungJarakLurus(posAwal.lat, posAwal.lng, a.koordinat.lat, a.koordinat.lng);
@@ -106,7 +102,6 @@ export function optimasiRuteBBM(daftarSarana, posisiUser, fnHitungPrediksi, hany
       kandidat.push(...cadanganList.slice(0, 5 - kandidat.length));
     }
   } else {
-    // Mode Keliling Penuh Seluruh Titik
     kandidat = saranaDenganGps.map(s => {
       const isNonLampu = (s.jenisLampu === 'NONE' || s.isBerlampu === false);
       return {
@@ -117,7 +112,6 @@ export function optimasiRuteBBM(daftarSarana, posisiUser, fnHitungPrediksi, hany
     });
   }
 
-  // 1. Urutkan tahap awal dengan Nearest Neighbor dari posisi awal
   const tahap1 = [];
   let sisaKandidat = [...kandidat];
   let curPos = posAwal;
@@ -137,10 +131,8 @@ export function optimasiRuteBBM(daftarSarana, posisiUser, fnHitungPrediksi, hany
     curPos = terpilih.koordinat;
   }
 
-  // 2. Haluskan jalur dengan Heuristik 2-Opt agar tidak ada rute yang bersilangan
   const ruteFinal = optimasiJalur2Opt(tahap1, posAwal);
 
-  // 3. Hitung akumulasi jarak dan bensin
   let totalJarakKm = 0;
   let titikLalu = posAwal;
   const ruteDenganDetail = ruteFinal.map(item => {
@@ -155,7 +147,7 @@ export function optimasiRuteBBM(daftarSarana, posisiUser, fnHitungPrediksi, hany
 
   const estimasiLiter = Number((totalJarakKm / KM_PER_LITER_BEAT).toFixed(2));
   const estimasiBiayaRp = Math.round(estimasiLiter * HARGA_PERTALITE);
-  const jarakButa = 32.0; // Patokan keliling acak
+  const jarakButa = 34.0;
   const penghematanRp = Math.max(0, Math.round(((jarakButa - totalJarakKm) / KM_PER_LITER_BEAT) * HARGA_PERTALITE));
 
   return {
@@ -199,6 +191,7 @@ export function bukaModalOptimasiBBM(daftarSarana, posisiUser, fnHitungPrediksi,
   }
 
   const linkGmaps = buatTautanGoogleMaps(hasil.ruteUrutan, hasil.posisiAwal);
+  const isGpsReal = posisiUser && posisiUser.lat && (posisiUser.lat !== -3.8000 || posisiUser.lng !== 102.2650);
 
   const daftarStepHtml = hasil.ruteUrutan.map((s, idx) => {
     let kwhTampil = '-';
@@ -219,7 +212,7 @@ export function bukaModalOptimasiBBM(daftarSarana, posisiUser, fnHitungPrediksi,
         <div>
           <strong style="color:#fff; font-size:0.8rem;">${idx + 1}. ${s.lokasi}</strong>
           <div style="color:#94a3b8; font-size:0.68rem; margin-top:2px;">
-            Jarak: +${s.jarakLeg} km • ${s.isNonLampu ? '🏷️ Non-Lampu' : `Sisa: ${kwhTampil} (${estTampil})`}
+            Jarak: +${s.jarakLeg} km dari titik sebelumnya • ${s.isNonLampu ? '🏷️ Non-Lampu' : `Sisa: ${kwhTampil} (${estTampil})`}
           </div>
         </div>
         <a href="https://www.google.com/maps/dir/?api=1&destination=${s.koordinat.lat},${s.koordinat.lng}" target="_blank" style="color:#38bdf8; text-decoration:none; font-size:0.75rem; font-weight:700;">Maps ➔</a>
@@ -229,12 +222,16 @@ export function bukaModalOptimasiBBM(daftarSarana, posisiUser, fnHitungPrediksi,
 
   modal.innerHTML = `
     <div class="modal-konten" style="max-width: 400px; z-index: 10000;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
         <h3 style="color:#fff; font-size:0.95rem;">⚡ Presisi AI Route Optimizer</h3>
         <button type="button" id="btn-tutup-rute-bbm" style="background:transparent; border:none; color:#94a3b8; font-size:1.3rem; cursor:pointer;">✕</button>
       </div>
 
-      <!-- PILIHAN MODE RUTE: PRIORITAS VS KELILING SEMUA -->
+      <div style="font-size:0.7rem; color:${isGpsReal ? '#10b981' : '#f59e0b'}; margin-bottom:8px; display:flex; align-items:center; gap:4px;">
+        <span>${isGpsReal ? '📍 Posisi GPS Anda Terdeteksi' : '⚠️️ GPS Default (Bengkulu Kota)'}:</span>
+        <strong>${hasil.posisiAwal.lat.toFixed(4)}, ${hasil.posisiAwal.lng.toFixed(4)}</strong>
+      </div>
+
       <div style="display:flex; gap:6px; margin-bottom:10px;">
         <button type="button" id="btn-mode-rute-prioritas" style="flex:1; padding:6px; border-radius:6px; font-size:0.72rem; font-weight:700; cursor:pointer; background:${hanyaPrioritas ? '#2563eb' : '#1e293b'}; color:#fff; border:1px solid ${hanyaPrioritas ? '#3b82f6' : 'rgba(255,255,255,0.1)'};">
           🎯 Target & Misi (${hasil.totalTitik} Titik)
@@ -246,22 +243,22 @@ export function bukaModalOptimasiBBM(daftarSarana, posisiUser, fnHitungPrediksi,
 
       <div style="background:linear-gradient(135deg, rgba(30,58,138,0.3), rgba(15,23,42,0.8)); border:1px solid rgba(59,130,246,0.3); padding:10px; border-radius:8px; margin-bottom:10px;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <span style="font-size:0.75rem; color:#93c5fd; font-weight:700;">🛣️ Rute Halus (Jalan Aspal Bengkulu)</span>
+          <span style="font-size:0.75rem; color:#93c5fd; font-weight:700;">🛣️ Rute Urut Aspal Bengkulu</span>
           <span style="font-size:0.68rem; color:#10b981; background:rgba(16,185,129,0.15); padding:2px 6px; border-radius:4px;">Hemat Rp ${hasil.penghematanRp.toLocaleString('id-ID')}</span>
         </div>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
           <div style="background:rgba(0,0,0,0.3); padding:6px; border-radius:6px; text-align:center;">
             <div style="font-size:1.1rem; font-weight:800; color:#fff;">${hasil.totalJarakKm} km</div>
-            <div style="font-size:0.65rem; color:#94a3b8;">Jarak Aspal Riil</div>
+            <div style="font-size:0.65rem; color:#94a3b8;">Total Jarak Aspal</div>
           </div>
           <div style="background:rgba(0,0,0,0.3); padding:6px; border-radius:6px; text-align:center;">
             <div style="font-size:1.1rem; font-weight:800; color:#38bdf8;">Rp ${hasil.estimasiBiayaRp.toLocaleString('id-ID')}</div>
-            <div style="font-size:0.65rem; color:#94a3b8;">BBM Beat (~${hasil.estimasiLiter}L)</div>
+            <div style="font-size:0.65rem; color:#94a3b8;">BBM Honda Beat (~${hasil.estimasiLiter}L)</div>
           </div>
         </div>
       </div>
 
-      <div style="font-size:0.75rem; font-weight:700; color:#fff; margin-bottom:6px;">Urutan Singgah Paling Efisien:</div>
+      <div style="font-size:0.75rem; font-weight:700; color:#fff; margin-bottom:6px;">Urutan Dari Lokasi Terdekat Anda:</div>
       <div style="max-height: 230px; overflow-y: auto; padding-right: 4px; margin-bottom:10px;">
         ${daftarStepHtml}
       </div>

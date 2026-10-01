@@ -1,50 +1,30 @@
-// js/gps.js - Deteksi satelit & pemroses koordinat manual
-
+// js/gps.js - Deteksi Posisi GPS Akurasi Tinggi
 export function dapatkanKoordinatGPS() {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
-      reject(new Error('Perangkat tidak mendukung sensor GPS.'));
-      return;
+      return reject(new Error("Perangkat tidak mendukung fitur lokasi GPS."));
     }
 
     navigator.geolocation.getCurrentPosition(
-      (posisi) => {
+      (pos) => {
         resolve({
-          lat: Number(posisi.coords.latitude.toFixed(6)),
-          lng: Number(posisi.coords.longitude.toFixed(6))
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          akurasi: pos.coords.accuracy
         });
       },
-      (error) => {
-        let pesan = 'Gagal mengambil lokasi GPS.';
-        if (error.code === error.PERMISSION_DENIED) pesan = 'Izin lokasi ditolak di browser.';
-        else if (error.code === error.TIMEOUT) pesan = 'Waktu sinyal GPS habis.';
+      (err) => {
+        let pesan = "Gagal mengambil lokasi.";
+        if (err.code === 1) pesan = "Izin lokasi GPS ditolak oleh peramban. Mohon izinkan akses lokasi.";
+        else if (err.code === 2) pesan = "Sinyal GPS tidak terdeteksi. Pastikan GPS HP aktif.";
+        else if (err.code === 3) pesan = "Waktu pencarian GPS habis.";
         reject(new Error(pesan));
       },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+      {
+        enableHighAccuracy: true,
+        timeout: 12000,
+        maximumAge: 0
+      }
     );
   });
-}
-
-// Mengubah format "3.797733°S, 102.266305°E" atau "-3.797733, 102.266305" ke objek { lat, lng }
-export function parsingKoordinatManual(teks) {
-  if (!teks || !teks.trim()) return null;
-
-  const bagian = teks.split(/[,;/]/).map(b => b.trim());
-  if (bagian.length < 2) return null;
-
-  function bersihkanAngka(str) {
-    const isSelatanAtauBarat = /[swSW]/.test(str);
-    const angkaBersih = str.replace(/[^0-9.-]/g, '');
-    let nilai = parseFloat(angkaBersih);
-
-    if (isNaN(nilai)) return null;
-    if (isSelatanAtauBarat && nilai > 0) nilai = -nilai;
-    return Number(nilai.toFixed(6));
-  }
-
-  const lat = bersihkanAngka(bagian[0]);
-  const lng = bersihkanAngka(bagian[1]);
-
-  if (lat === null || lng === null) return null;
-  return { lat, lng };
 }
