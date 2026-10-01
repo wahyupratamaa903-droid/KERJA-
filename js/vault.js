@@ -1,110 +1,34 @@
-// js/vault.js - Engine Brankas Data & Mesin Waktu (Zero-Loss System)
+// js/vault.js - Brankas Data & Mesin Waktu Mandiri
 
-const KUNCI_SNAPSHOT = 'devis_time_machine_v1';
-const MAKS_SNAPSHOT = 10; // Menyimpan 10 titik waktu terakhir
+export function rekamSnapshotWaktu(dataSarana) {
+  if (!dataSarana || dataSarana.length === 0) return;
+  const list = JSON.parse(localStorage.getItem('devis_time_machine_snapshots') || '[]');
+  const now = new Date();
+  const labelWaktu = `${now.getDate()} ${now.toLocaleString('id-ID', {month:'short'})}, ${String(now.getHours()).padStart(2,'0')}.${String(now.getMinutes()).padStart(2,'0')}`;
+  
+  list.unshift({
+    waktu: labelWaktu,
+    total: dataSarana.length,
+    data: dataSarana
+  });
 
-// 1. Simpan Snapshot Otomatis Setiap Ada Perubahan
-export function rekamSnapshotWaktu(daftarSarana) {
-  if (!daftarSarana || daftarSarana.length === 0) return;
-  try {
-    const riwayat = JSON.parse(localStorage.getItem(KUNCI_SNAPSHOT) || '[]');
-    const sekarang = new Date();
-    const labelWaktu = sekarang.toLocaleDateString('id-ID', {
-      day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
-    });
-
-    const snapshotBaru = {
-      id: Date.now(),
-      waktu: labelWaktu,
-      totalSarana: daftarSarana.length,
-      data: daftarSarana
-    };
-
-    // Sisipkan di awal, batasi maksimal 10 snapshot
-    riwayat.unshift(snapshotBaru);
-    if (riwayat.length > MAKS_SNAPSHOT) riwayat.pop();
-
-    localStorage.setItem(KUNCI_SNAPSHOT, JSON.stringify(riwayat));
-  } catch (err) {
-    console.error("Gagal merekam snapshot waktu:", err);
-  }
+  localStorage.setItem('devis_time_machine_snapshots', JSON.stringify(list.slice(0, 8)));
 }
 
-// 2. Ambil Riwayat Snapshot untuk Ditampilkan di Menu Mesin Waktu
 export function ambilDaftarSnapshot() {
-  try {
-    return JSON.parse(localStorage.getItem(KUNCI_SNAPSHOT) || '[]');
-  } catch (err) {
-    return [];
-  }
+  return JSON.parse(localStorage.getItem('devis_time_machine_snapshots') || '[]');
 }
 
-// 3. Ekspor Data Fisik Mentah ke File (.json) di HP
-export function unduhFileCadangan(daftarSarana) {
-  if (!daftarSarana || daftarSarana.length === 0) {
-    alert("Belum ada data untuk dicadangkan.");
-    return;
-  }
-  const dataString = JSON.stringify(daftarSarana, null, 2);
-  const blob = new Blob([dataString], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const tgl = new Date().toISOString().slice(0, 10);
-
+export function unduhCadanganJson(dataSarana) {
+  const blob = new Blob([JSON.stringify(dataSarana, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
-  a.href = url;
-  a.download = `CADANGAN_SARANA_DEVIS_${tgl}.json`;
-  document.body.appendChild(a);
+  a.href = URL.createObjectURL(blob);
+  a.download = `Backup_Sarana_DevisJaya_${new Date().toISOString().split('T')[0]}.json`;
   a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
 }
 
-// 4. Kirim Berkas Cadangan Format Teks ke WhatsApp Pribadi
-export function kirimCadanganKeWA(daftarSarana) {
-  if (!daftarSarana || daftarSarana.length === 0) {
-    alert("Tidak ada data untuk dikirim.");
-    return;
-  }
-  const ringkasan = daftarSarana.map((s, idx) => {
-    const terakhir = s.riwayatToken && s.riwayatToken.length > 0 
-      ? s.riwayatToken[s.riwayatToken.length - 1] 
-      : { kwh: 0, tanggal: '-' };
-    const lat = s.koordinat && s.koordinat.lat ? s.koordinat.lat : '-';
-    const lng = s.koordinat && s.koordinat.lng ? s.koordinat.lng : '-';
-    return `${idx + 1}. *${s.lokasi}*\n   Tipe: ${s.tipe} (${s.jenisLampu || 'FL'})\n   Token: ${terakhir.kwh} kWh (${terakhir.tanggal})\n   GPS: ${lat}, ${lng}`;
-  }).join('\n\n');
-
-  const teksPesan = `*BRANKAS DATA LAPANGAN PT DEVIS JAYA*\n_Dicadangkan pada: ${new Date().toLocaleString('id-ID')}_\nTotal Titik: ${daftarSarana.length}\n\n${ringkasan}`;
-  const urlWa = `https://wa.me/?text=${encodeURIComponent(teksPesan)}`;
-  window.open(urlWa, '_blank');
-}
-
-// Integrasi Plugin GitHub Auto-Commit
-import { simpanKeGitHubOtomatis } from './plugins/github-vault.js';
-
-export async function jalankanBackupGitHub(daftarSarana) {
-  let token = localStorage.getItem('devis_gh_token');
-  if (!token) {
-    token = prompt("Masukkan Token GitHub Anda (ghp_...):");
-    if (!token || !token.startsWith("ghp_")) {
-      alert("Token dibatalkan atau tidak valid.");
-      return;
-    }
-    localStorage.setItem('devis_gh_token', token.trim());
-  }
-
-  const konfirmasi = confirm(`Cadangkan ${daftarSarana.length} sarana langsung ke repositori GitHub tanpa Termux?`);
-  if (!konfirmasi) return;
-
-  try {
-    const hasil = await simpanKeGitHubOtomatis(daftarSarana, token);
-    alert(`✅ Berhasil! Data telah tersimpan permanen di GitHub.\nCommit: ${hasil.commit.sha.substring(0, 7)}`);
-  } catch (err) {
-    if (err.message.includes("Bad credentials")) {
-      localStorage.removeItem('devis_gh_token');
-      alert("Token GitHub kedaluwarsa. Silakan masukkan ulang token yang benar.");
-    } else {
-      alert("Gagal mencadangkan ke GitHub: " + err.message);
-    }
-  }
+export function kirimCadanganWhatsApp(dataSarana) {
+  const ringkasan = dataSarana.map((s, i) => `${i+1}. ${s.lokasi} (${s.riwayatToken.length} riwayat)`).join('\n');
+  const teks = encodeURIComponent(`*CADANGAN DATA PT DEVIS JAYA*\nTotal: ${dataSarana.length} Titik\n\n${ringkasan}`);
+  window.open(`https://api.whatsapp.com/send?text=${teks}`, '_blank');
 }

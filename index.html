@@ -3,23 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <title>Monitoring Sarana Lapangan</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#060911">
 
-  <!-- Leaflet CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
   <link rel="stylesheet" href="css/style.css">
 
-  <!-- PEMBUNUH CACHE OTOMATIS: Memaksa HP selalu memuat file terbaru -->
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(registrations => {
-        registrations.forEach(r => r.unregister());
-      });
+      navigator.serviceWorker.getRegistrations().then(r => r.forEach(x => x.unregister()));
     }
     if ('caches' in window) {
       caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
@@ -28,11 +22,15 @@
 </head>
 <body>
   <div class="wrapper">
-    <!-- HEADER -->
+    <!-- TOP HEADER -->
     <header class="top-header-bar">
       <div class="header-brand">
         <span class="brand-title">PT DEVIS JAYA</span>
         <span class="live-pill"><span class="live-dot"></span><span id="label-sync-status">Firebase Live</span></span>
+        <!-- INDIKATOR CUACA MANDIRI TERPISAH -->
+        <span id="pill-cuaca-bengkulu" style="font-size:0.65rem; background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.3); color:#38bdf8; padding:2px 6px; border-radius:4px; font-weight:700;">
+          ⛅ Bengkulu...
+        </span>
       </div>
       <div class="header-actions">
         <button type="button" id="btn-buka-vault" class="btn-header-action vault">🛡️ Brankas</button>
@@ -60,11 +58,12 @@
         <button type="button" id="btn-tool-anggaran" class="btn-tool"><span>💰</span><span>Estimasi</span></button>
         <button type="button" id="btn-tool-pdf" class="btn-tool"><span>📄</span><span>PDF Formal</span></button>
         <button type="button" id="btn-tool-jarvis-brief" class="btn-tool" style="border-color: rgba(6,182,212,0.4);"><span>🎙️</span><span>Brief AI</span></button>
+        <button type="button" id="btn-tool-kalender" class="btn-tool"><span>⏰</span><span>Alarm Cek</span></button>
       </div>
 
       <input type="file" id="input-file-ocr" accept="image/*" capture="environment" style="display:none;">
 
-      <!-- FORM TAMBAH TITIK BARU -->
+      <!-- FORM CATAT TITIK BARU -->
       <form id="form-sarana" class="form-box" style="display:none;">
         <h2 class="form-title">Catat Titik Sarana Baru</h2>
         <div class="form-group">
@@ -121,7 +120,7 @@
         <button type="submit" class="btn-submit">Simpan Sarana Baru</button>
       </form>
 
-      <!-- FILTER & PENCARIAN CEPAT -->
+      <!-- PENCARIAN & FILTER -->
       <div class="kontrol-pencarian">
         <h2 class="judul-bagian">Daftar Sarana Lapangan</h2>
         <input type="text" id="input-cari" class="input-cari-jalan" placeholder="Cari nama jalan atau tipe sarana...">
@@ -165,12 +164,12 @@
       <div id="peta-gis" style="height: calc(100vh - 140px); width:100%;"></div>
     </main>
 
-    <!-- VIEW 3: MISI & OPERASIONAL -->
+    <!-- VIEW 3: MISI & BBM -->
     <main id="view-misi" class="tab-view">
       <section class="misi-card">
         <div class="misi-header">
           <div><span class="sub-label">JADWAL PATROLI</span><h3>Misi Lapangan Hari Ini</h3></div>
-          <span class="badge-tgl">Hari Ini</span>
+          <span id="label-tgl-misi" class="badge-tgl">Hari Ini</span>
         </div>
         <div id="container-list-misi" class="misi-list-box"></div>
       </section>
@@ -186,11 +185,11 @@
         </div>
         <div class="bbm-saldo-box">
           <div class="bbm-saldo-item">
-            <span class="lbl">Sisa Saldo:</span>
+            <span class="lbl">Sisa Saldo Bensin:</span>
             <strong id="bbm-sisa-rp" class="val-sisa">Rp 50.000</strong>
           </div>
           <div class="bbm-saldo-item right">
-            <span class="lbl">Terpakai:</span>
+            <span class="lbl">Sudah Diisi:</span>
             <span id="bbm-terpakai-rp" class="val-pakai">Rp 0</span>
           </div>
         </div>
@@ -220,14 +219,53 @@
   </div>
   <button type="button" id="fab-voice-cmd" class="fab-jarvis-mic" title="Voice Commander">🎙️</button>
 
-  <!-- MODAL ESTIMASI ANGGARAN -->
+  <!-- MODAL ESTIMASI ANGGARAN TOKEN (PERSIS FORMAT ASLI) -->
   <div id="modal-anggaran" class="modal-backdrop">
     <div class="modal-konten" style="max-width: 400px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
         <h3 style="color:#fff; font-size:1rem;">💰 Estimasi Anggaran Token</h3>
-        <button type="button" id="btn-tutup-anggaran" style="background:transparent; border:none; color:#94a3b8; font-size:1.3rem; cursor:pointer;">✕</button>
+        <button type="button" id="btn-tutup-anggaran-x" style="background:transparent; border:none; color:#94a3b8; font-size:1.3rem; cursor:pointer;">✕</button>
       </div>
+      <p style="font-size:0.75rem; color:#94a3b8; margin-bottom:12px;">Perhitungan kebutuhan dana pengisian sarana kritis ke PLN.</p>
       <div id="konten-rincian-anggaran"></div>
+      <button type="button" id="btn-tutup-anggaran" class="btn-submit" style="width:100%; margin-top:12px; background:#2563eb;">Tutup</button>
+    </div>
+  </div>
+
+  <!-- MODAL BRANKAS & KEAMANAN DATA -->
+  <div id="modal-vault" class="modal-backdrop">
+    <div class="modal-konten" style="max-width: 380px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h3 style="color:#fff; font-size:1rem;">🛡️ Brankas & Keamanan Data</h3>
+        <button type="button" id="btn-tutup-vault" style="background:transparent; border:none; color:#94a3b8; font-size:1.2rem; cursor:pointer;">✕</button>
+      </div>
+
+      <div class="vault-section">
+        <div class="vault-section-title" style="font-size:0.75rem; font-weight:700; color:#38bdf8; margin-bottom:8px;">📦 CADANGAN FISIK MANDIRI</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+          <button type="button" id="btn-vault-github" class="btn-tool" style="grid-column:span 2; justify-content:center; padding:10px; border-color:#3b82f6;">
+            <span>🚀</span><span>Simpan ke GitHub (Tanpa Termux)</span>
+          </button>
+          <button type="button" id="btn-vault-unduh" class="btn-tool" style="justify-content:center; padding:8px;">
+            <span>💾</span><span>Unduh (.json)</span>
+          </button>
+          <button type="button" id="btn-vault-wa" class="btn-tool" style="justify-content:center; padding:8px;">
+            <span>📲</span><span>Kirim ke WA</span>
+          </button>
+        </div>
+        <div style="margin-top:8px;">
+          <input type="file" id="input-file-restore" accept=".json" style="display:none;">
+          <button type="button" id="btn-vault-pulihkan-file" class="btn-tool" style="width:100%; justify-content:center; padding:8px; border-color:#10b981;">
+            <span>📥</span><span>Pulihkan dari File Cadangan (.json)</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="vault-section" style="margin-top:14px;">
+        <div class="vault-section-title" style="font-size:0.75rem; font-weight:700; color:#38bdf8; margin-bottom:6px;">⏱️ MESIN WAKTU (SNAPSHOT OTOMATIS)</div>
+        <p style="font-size:0.68rem; color:#94a3b8; margin-bottom:8px;">Pilih titik waktu untuk mengembalikan data jika terjadi salah edit.</p>
+        <div id="kontainer-snapshot" style="max-height:160px; overflow-y:auto;"></div>
+      </div>
     </div>
   </div>
 
@@ -300,21 +338,7 @@
     </div>
   </div>
 
-  <!-- MODAL BRANKAS -->
-  <div id="modal-vault" class="modal-backdrop">
-    <div class="modal-konten" style="max-width:380px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-        <h3 style="color:#fff; font-size:1rem;">🛡️ Brankas & Keamanan Data</h3>
-        <button type="button" id="btn-tutup-vault" style="background:transparent; border:none; color:#94a3b8; font-size:1.2rem; cursor:pointer;">✕</button>
-      </div>
-      <button type="button" id="btn-vault-github" class="btn-vault-action" style="width:100%; margin-bottom:8px;">
-        <span>🚀 Cadangkan ke GitHub</span>
-      </button>
-      <div id="kontainer-snapshot" class="snapshot-list" style="margin-top:8px;"></div>
-    </div>
-  </div>
-
-  <!-- MODAL AUTH -->
+  <!-- MODAL AUTH PIN -->
   <div id="modal-auth" class="modal-backdrop">
     <div class="modal-konten" style="max-width:320px; text-align:center;">
       <div style="font-size:2rem; margin-bottom:6px;">🔐</div>
@@ -343,7 +367,6 @@
     </button>
   </nav>
 
-  <!-- SCRIPT UTAMA DENGAN CACHE BUSTER -->
-  <script type="module" src="js/app.js?v=1790791803"></script>
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>
