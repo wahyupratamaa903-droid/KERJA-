@@ -1,4 +1,4 @@
-// js/map.js - OpenStreetMap Bebas API Key + Neon Radar Beacons
+// js/map.js - OpenStreetMap Bebas API Key + Radar Beacons (Mendukung Titik Non-Lampu)
 let map = null;
 let markerGroup = null;
 let userMarker = null;
@@ -12,7 +12,6 @@ export function inisialisasiPeta() {
     attributionControl: false
   }).setView(bengkuluCoord, 13);
 
-  // Menggunakan OpenStreetMap Resmi: 100% Terbuka, Gratis Selamanya, TANPA API Key
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     subdomains: 'abc'
@@ -25,15 +24,18 @@ export function inisialisasiPeta() {
   }, 300);
 }
 
-function buatIconHolografik(status) {
-  let warna = '#10b981'; // Aman
+function buatIconHolografik(status, isNonLampu) {
+  let warna = '#10b981'; // Aman (Hijau)
   let animasi = 'pulseAman';
 
-  if (status === 'kritis') {
-    warna = '#ef4444'; // Kritis
+  if (isNonLampu) {
+    warna = '#06b6d4'; // Non-Lampu (Cyan)
+    animasi = 'pulseAman';
+  } else if (status === 'kritis') {
+    warna = '#ef4444'; // Kritis (Merah)
     animasi = 'pulseKritis';
   } else if (status === 'waspada') {
-    warna = '#f59e0b'; // Waspada
+    warna = '#f59e0b'; // Waspada (Kuning)
     animasi = 'pulseWaspada';
   }
 
@@ -61,31 +63,51 @@ export function perbaruiPinPeta(daftarSarana, fnHitungPrediksi) {
 
   daftarSarana.forEach((s) => {
     if (s.koordinat && s.koordinat.lat && s.koordinat.lng) {
-      const info = fnHitungPrediksi(s.riwayatToken, s.jumlahLampu, s.jenisLampu);
-      const icon = buatIconHolografik(info.status);
-      const pos = [s.koordinat.lat, s.koordinat.lng];
+      const isNonLampu = (s.jenisLampu === 'NONE' || s.isBerlampu === false || s.statusPenerangan === 'tanpa-lampu');
+      let status = 'aman';
+      let kwhTampil = '-';
+      let estTampil = 'Sarana Tanpa Lampu Listrik';
+      let wattTampil = '0 Watt';
 
+      if (!isNonLampu) {
+        const info = fnHitungPrediksi(s.riwayatToken, s.jumlahLampu, s.jenisLampu);
+        status = info.status;
+        kwhTampil = info.terakhir ? `${info.terakhir.kwh.toLocaleString('id-ID')} kWh` : '-';
+        estTampil = info.estimasiHari !== undefined ? `±${info.estimasiHari} hari (${info.tanggalHabis})` : '-';
+        wattTampil = `±${info.wattTerdeteksi || 0} Watt`;
+      }
+
+      const icon = buatIconHolografik(status, isNonLampu);
+      const pos = [s.koordinat.lat, s.koordinat.lng];
       bounds.push(pos);
 
-      const kwhTampil = info.terakhir ? `${info.terakhir.kwh.toLocaleString('id-ID')} kWh` : '-';
-      const estTampil = info.estimasiHari !== undefined ? `±${info.estimasiHari} hari (${info.tanggalHabis})` : '-';
+      const labelBadge = isNonLampu ? 'NON-LAMPU' : status.toUpperCase();
+      const badgeClass = isNonLampu ? 'aman' : status;
 
       const kontenPopup = `
         <div class="dark-holo-popup">
-          <div class="popup-tag ${info.status}">${s.tipe} • ${info.status.toUpperCase()}</div>
+          <div class="popup-tag ${badgeClass}" style="${isNonLampu ? 'background:rgba(6,182,212,0.2); color:#06b6d4; border-color:#06b6d4;' : ''}">
+            ${s.tipe} • ${labelBadge}
+          </div>
           <h4 class="popup-title">${s.lokasi}</h4>
-          <div class="popup-row">
-            <span>Sisa Token:</span>
-            <strong>${kwhTampil}</strong>
-          </div>
-          <div class="popup-row">
-            <span>Habis:</span>
-            <span style="color:#fcd34d;">${estTampil}</span>
-          </div>
-          <div class="popup-row">
-            <span>Beban Daya:</span>
-            <span style="color:#60a5fa;">±${info.wattTerdeteksi || 0} Watt</span>
-          </div>
+          ${!isNonLampu ? `
+            <div class="popup-row">
+              <span>Sisa Token:</span>
+              <strong>${kwhTampil}</strong>
+            </div>
+            <div class="popup-row">
+              <span>Habis:</span>
+              <span style="color:#fcd34d;">${estTampil}</span>
+            </div>
+            <div class="popup-row">
+              <span>Beban Daya:</span>
+              <span style="color:#60a5fa;">${wattTampil}</span>
+            </div>
+          ` : `
+            <div style="font-size:0.72rem; color:#94a3b8; margin:6px 0;">
+              Sarana visual fisik aktif (tidak memerlukan pengisian token PLN).
+            </div>
+          `}
           <a href="https://www.google.com/maps/dir/?api=1&destination=${s.koordinat.lat},${s.koordinat.lng}" target="_blank" class="popup-btn-nav">
             Navigasi Google Maps ➔
           </a>
@@ -109,11 +131,7 @@ export function perbaruiLokasiUserDiPeta(lat, lng) {
   } else {
     const iconMotor = L.divIcon({
       className: 'marker-posisi-user',
-      html: `
-        <div class="user-gps-pulse">
-          <div class="user-gps-core"></div>
-        </div>
-      `,
+      html: `<div class="user-gps-pulse"><div class="user-gps-core"></div></div>`,
       iconSize: [22, 22],
       iconAnchor: [11, 11]
     });
