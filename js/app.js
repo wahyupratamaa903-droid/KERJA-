@@ -7,6 +7,7 @@ import { inisialisasiPeta, perbaruiPinPeta, perbaikiUkuranPeta } from './map.js'
 import { bukaModalAnggaran } from './plugins/budget-calculator.js';
 import { generatePDFLaporan } from './pdf-report.js';
 import { rekamSnapshotWaktu, ambilDaftarSnapshot, unduhCadanganJson, kirimCadanganWhatsApp } from './vault.js';
+import { dapatkanKoordinatGPS } from './gps.js';
 
 const hitungPrediksiHabis = analisaDayaDanEstimasi;
 
@@ -15,7 +16,33 @@ let dataSarana = [];
 let statusFilterAktif = 'semua';
 let indexSaranaTerpilih = null;
 
-// DOM
+// PENGURAI KOORDINAT MENDUKUNG FORMAT DERAJAT (°S, °E) MAUPUN MINUS
+function parseKoordinatFleksibel(teks) {
+  if (!teks) return null;
+  const str = teks.trim();
+  const pemisah = str.includes(',') ? ',' : ' ';
+  const bagian = str.split(pemisah).map(b => b.trim()).filter(Boolean);
+  if (bagian.length < 2) return null;
+
+  const latStr = bagian[0];
+  const lngStr = bagian[1];
+
+  let latFaktor = 1;
+  let lngFaktor = 1;
+
+  if (latStr.toUpperCase().includes('S') || latStr.includes('-')) latFaktor = -1;
+  if (lngStr.toUpperCase().includes('W') || lngStr.includes('-')) lngFaktor = -1;
+
+  const latNum = parseFloat(latStr.replace(/[^0-9.]/g, '')) * latFaktor;
+  const lngNum = parseFloat(lngStr.replace(/[^0-9.]/g, '')) * lngFaktor;
+
+  if (!isNaN(latNum) && !isNaN(lngNum)) {
+    return { lat: Number(latNum.toFixed(6)), lng: Number(lngNum.toFixed(6)) };
+  }
+  return null;
+}
+
+// DOM ELEMEN
 const containerDaftar = document.getElementById('daftar-sarana');
 const inputCari = document.getElementById('input-cari');
 const filterTipe = document.getElementById('filter-tipe');
@@ -24,7 +51,7 @@ const formSarana = document.getElementById('form-sarana');
 const elTotal = document.getElementById('stat-total');
 const elIsi = document.getElementById('stat-isi');
 
-// 1. CUACA MANDIRI TERPISAH (BMKG BENGKULU)
+// 1. CUACA MANDIRI BENGKULU
 async function muatCuacaMandiri() {
   try {
     const res = await fetch("https://api.open-meteo.com/v1/forecast?latitude=-3.8004&longitude=102.2599&current_weather=true");
@@ -39,7 +66,7 @@ async function muatCuacaMandiri() {
   }
 }
 
-// 2. PENARIKAN DATA 19 SARANA
+// 2. PENARIKAN DATA FIREBASE & LOCAL STORAGE
 async function muatDataUtama() {
   const lokal = localStorage.getItem('sarana-kerja-v3');
   if (lokal) {
@@ -90,15 +117,32 @@ function sesuaikanTampilanAkses() {
   }
 }
 
-// 4. RENDER KARTU SARANA FORMAT ASLI (2 KOLOM SISA + DROPDOWN RIWAYAT)
+// 4. PENANGANAN TOGGLE FORM BERLAMPU VS TANPA LAMPU
+const selJenisLampu = document.getElementById('jenisLampu');
+const boxLampuToken = document.getElementById('box-opsi-lampu-token');
+if (selJenisLampu && boxLampuToken) {
+  selJenisLampu.addEventListener('change', () => {
+    if (selJenisLampu.value === 'NONE') {
+      boxLampuToken.style.display = 'none';
+      document.getElementById('sisaKwh').value = '';
+    } else {
+      boxLampuToken.style.display = 'block';
+    }
+  });
+}
+
+// 5. RENDER DAFTAR KARTU SARANA
 function renderData() {
   if (!containerDaftar) return;
   containerDaftar.innerHTML = '';
 
   let totalKritis = 0;
   dataSarana.forEach(s => {
-    const info = hitungPrediksiHabis(s.riwayatToken, s.jumlahLampu, s.jenisLampu);
-    if (info.status === 'kritis' || info.status === 'waspada') totalKritis++;
+    const isNon = (s.jenisLampu === 'NONE' || s.isBerlampu === false);
+    if (!isNon) {
+      const info = hitungPrediksiHabis(s.riwayatToken, s.jumlahLampu, s.jenisLampu);
+      if (info.status === 'kritis' || info.status === 'waspada') totalKritis++;
+    }
   });
 
   if (elTotal) elTotal.textContent = dataSarana.length;
@@ -115,82 +159,109 @@ function renderData() {
 
   dataTersaring.forEach((item) => {
     const originalIndex = dataSarana.findIndex(s => s.id === item.id);
-    const info = hitungPrediksiHabis(item.riwayatToken, item.jumlahLampu, item.jenisLampu);
+    const isNonLampu = (item.jenisLampu === 'NONE' || item.isBerlampu === false);
     const kartu = document.createElement('article');
-    kartu.className = `kartu-sarana status-${info.status}`;
 
-    const historiUrut = [...(item.riwayatToken || [])].sort((a,b) => new Date(b.tanggal) - new Date(a.tanggal));
-    const ter = historiUrut[0] || { kwh: '-', tanggal: '-' };
-    const seb = historiUrut[1] || { kwh: '-', tanggal: '-' };
-
-    // Dropdown Riwayat
-    const listRiwayatHtml = historiUrut.map(h => `
-      <div style="display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px dashed rgba(255,255,255,0.06); font-size:0.7rem; color:#94a3b8;">
-        <span>${h.tanggal}</span>
-        <strong style="color:#cbd5e1;">${Number(h.kwh).toLocaleString('id-ID')} kWh</strong>
-      </div>
-    `).join('');
-
-    let footerPetugas = '';
-    if (isPetugas) {
-      footerPetugas = `
-        <div class="kartu-footer" style="display:flex; gap:8px; margin-top:10px;">
-          <button type="button" class="btn-catat-kartu" data-index="${originalIndex}" style="flex:2; background:#2563eb; color:#fff; border:none; padding:8px; border-radius:6px; font-weight:700; cursor:pointer;">+ Catat Token</button>
-          <button type="button" class="btn-edit-kartu" data-index="${originalIndex}" style="flex:1; background:#334155; color:#fff; border:none; padding:8px; border-radius:6px; cursor:pointer;">Edit</button>
-          <button type="button" class="btn-hapus-kartu" data-index="${originalIndex}" style="flex:1; background:#ef4444; color:#fff; border:none; padding:8px; border-radius:6px; cursor:pointer;">Hapus</button>
+    if (isNonLampu) {
+      kartu.className = 'kartu-sarana status-aman';
+      kartu.innerHTML = `
+        <div class="kartu-header">
+          <div>
+            <span style="font-size:0.75rem; color:#38bdf8; font-weight:800;">${item.tipe} • NON-LAMPU</span>
+            <h3 class="lokasi-sarana" style="margin:2px 0; color:#fff;">${item.lokasi}</h3>
+            ${item.koordinat && item.koordinat.lat ? `<div style="font-size:0.7rem; color:#60a5fa;">📍 GPS: ${item.koordinat.lat},${item.koordinat.lng}</div>` : ''}
+          </div>
+          <span class="tag-status" style="background:rgba(6,182,212,0.2); color:#06b6d4; border:1px solid #06b6d4;">NON-LAMPU</span>
         </div>
+        <div class="kartu-body">
+          <div style="background:rgba(15,23,42,0.6); padding:10px; border-radius:8px; margin-bottom:8px; border-left:3px solid #06b6d4;">
+            <div style="font-size:0.75rem; color:#38bdf8; font-weight:700;">🏷️ Sarana Reklame Non-Lampu (Fisik Polos)</div>
+            <div style="font-size:0.68rem; color:#94a3b8; margin-top:2px;">
+              Terdaftar aktif di radar GIS • Tidak menggunakan meteran listrik PLN.
+            </div>
+          </div>
+          ${item.koordinat && item.koordinat.lat ? `
+            <a href="https://www.google.com/maps/dir/?api=1&destination=${item.koordinat.lat},${item.koordinat.lng}" target="_blank" class="btn-rute-maps" style="display:block; text-align:center; background:#065f46; color:#34d399; text-decoration:none; padding:8px; border-radius:6px; font-size:0.75rem; font-weight:700; margin-top:8px;">
+              Navigasi Google Maps ➔
+            </a>
+          ` : ''}
+        </div>
+        ${isPetugas ? `
+          <div class="kartu-footer" style="display:flex; gap:8px; margin-top:10px;">
+            <button type="button" class="btn-edit-kartu" data-index="${originalIndex}" style="flex:1; background:#334155; color:#fff; border:none; padding:8px; border-radius:6px; cursor:pointer;">Edit</button>
+            <button type="button" class="btn-hapus-kartu" data-index="${originalIndex}" style="flex:1; background:#ef4444; color:#fff; border:none; padding:8px; border-radius:6px; cursor:pointer;">Hapus</button>
+          </div>
+        ` : ''}
+      `;
+    } else {
+      const info = hitungPrediksiHabis(item.riwayatToken, item.jumlahLampu, item.jenisLampu);
+      kartu.className = `kartu-sarana status-${info.status}`;
+
+      const historiUrut = [...(item.riwayatToken || [])].sort((a,b) => new Date(b.tanggal) - new Date(a.tanggal));
+      const ter = historiUrut[0] || { kwh: '-', tanggal: '-' };
+      const seb = historiUrut[1] || { kwh: '-', tanggal: '-' };
+
+      const listRiwayatHtml = historiUrut.map(h => `
+        <div style="display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px dashed rgba(255,255,255,0.06); font-size:0.7rem; color:#94a3b8;">
+          <span>${h.tanggal}</span>
+          <strong style="color:#cbd5e1;">${Number(h.kwh).toLocaleString('id-ID')} kWh</strong>
+        </div>
+      `).join('');
+
+      kartu.innerHTML = `
+        <div class="kartu-header">
+          <div>
+            <span style="font-size:0.75rem; color:#94a3b8; font-weight:800;">${item.tipe} • ${item.jenisLampu} (${item.jumlahLampu || 0} TITIK)</span>
+            <h3 class="lokasi-sarana" style="margin:2px 0; color:#fff;">${item.lokasi}</h3>
+            ${item.koordinat && item.koordinat.lat ? `<div style="font-size:0.7rem; color:#60a5fa;">📍 Koordinat GPS Terdaftar</div>` : ''}
+          </div>
+          <span class="tag-status ${info.status}">${info.status.toUpperCase()}</span>
+        </div>
+
+        <div class="kartu-body">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; background:rgba(15,23,42,0.6); padding:8px 10px; border-radius:8px; margin-bottom:8px;">
+            <div>
+              <div style="font-size:0.68rem; color:#94a3b8;">Sisa Terakhir:</div>
+              <strong style="color:#fff; font-size:0.9rem;">${typeof ter.kwh === 'number' ? ter.kwh.toLocaleString('id-ID') : ter.kwh} kWh</strong>
+              <div style="font-size:0.65rem; color:#64748b;">${ter.tanggal}</div>
+            </div>
+            <div>
+              <div style="font-size:0.68rem; color:#94a3b8;">Sisa Sebelumnya:</div>
+              <strong style="color:#fff; font-size:0.9rem;">${typeof seb.kwh === 'number' ? seb.kwh.toLocaleString('id-ID') : seb.kwh} kWh</strong>
+              <div style="font-size:0.65rem; color:#64748b;">${seb.tanggal}</div>
+            </div>
+          </div>
+
+          <details style="margin-bottom:8px; font-size:0.72rem; color:#93c5fd;">
+            <summary style="cursor:pointer; font-weight:700;">▶ Riwayat Pencatatan (${historiUrut.length} Catatan)</summary>
+            <div style="margin-top:6px; padding:6px; background:rgba(0,0,0,0.25); border-radius:6px;">
+              ${listRiwayatHtml}
+            </div>
+          </details>
+
+          <div class="grid-ringkasan" style="font-size:0.75rem;">
+            <div>Laju: <strong>${info.rataPerHari} kWh/hr</strong> (Beban: ±${info.wattTerdeteksi || 0} Watt)</div>
+            <div class="sorot-hari" style="margin-top:3px;">
+              Estimasi: <strong>± ${info.estimasiHari} Hari Lagi (${info.tanggalHabis})</strong>
+            </div>
+          </div>
+
+          ${item.koordinat && item.koordinat.lat ? `
+            <a href="https://www.google.com/maps/dir/?api=1&destination=${item.koordinat.lat},${item.koordinat.lng}" target="_blank" class="btn-rute-maps" style="display:block; text-align:center; background:#065f46; color:#34d399; text-decoration:none; padding:8px; border-radius:6px; font-size:0.75rem; font-weight:700; margin-top:8px;">
+              Navigasi Google Maps ➔
+            </a>
+          ` : ''}
+        </div>
+
+        ${isPetugas ? `
+          <div class="kartu-footer" style="display:flex; gap:8px; margin-top:10px;">
+            <button type="button" class="btn-catat-kartu" data-index="${originalIndex}" style="flex:2; background:#2563eb; color:#fff; border:none; padding:8px; border-radius:6px; font-weight:700; cursor:pointer;">+ Catat Token</button>
+            <button type="button" class="btn-edit-kartu" data-index="${originalIndex}" style="flex:1; background:#334155; color:#fff; border:none; padding:8px; border-radius:6px; cursor:pointer;">Edit</button>
+            <button type="button" class="btn-hapus-kartu" data-index="${originalIndex}" style="flex:1; background:#ef4444; color:#fff; border:none; padding:8px; border-radius:6px; cursor:pointer;">Hapus</button>
+          </div>
+        ` : ''}
       `;
     }
-
-    kartu.innerHTML = `
-      <div class="kartu-header">
-        <div>
-          <span style="font-size:0.75rem; color:#94a3b8; font-weight:800;">${item.tipe} • ${item.jenisLampu} (${item.jumlahLampu || 0} TITIK)</span>
-          <h3 class="lokasi-sarana" style="margin:2px 0; color:#fff;">${item.lokasi}</h3>
-          ${item.koordinat && item.koordinat.lat ? `<div style="font-size:0.7rem; color:#60a5fa;">📍 Koordinat GPS Terdaftar</div>` : ''}
-        </div>
-        <span class="tag-status ${info.status}">${info.status.toUpperCase()}</span>
-      </div>
-
-      <div class="kartu-body">
-        <!-- GRID DUA KOLOM ASLI -->
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; background:rgba(15,23,42,0.6); padding:8px 10px; border-radius:8px; margin-bottom:8px;">
-          <div>
-            <div style="font-size:0.68rem; color:#94a3b8;">Sisa Terakhir:</div>
-            <strong style="color:#fff; font-size:0.9rem;">${typeof ter.kwh === 'number' ? ter.kwh.toLocaleString('id-ID') : ter.kwh} kWh</strong>
-            <div style="font-size:0.65rem; color:#64748b;">${ter.tanggal}</div>
-          </div>
-          <div>
-            <div style="font-size:0.68rem; color:#94a3b8;">Sisa Sebelumnya:</div>
-            <strong style="color:#fff; font-size:0.9rem;">${typeof seb.kwh === 'number' ? seb.kwh.toLocaleString('id-ID') : seb.kwh} kWh</strong>
-            <div style="font-size:0.65rem; color:#64748b;">${seb.tanggal}</div>
-          </div>
-        </div>
-
-        <!-- COLLAPSIBLE DROPDOWN RIWAYAT -->
-        <details style="margin-bottom:8px; font-size:0.72rem; color:#93c5fd;">
-          <summary style="cursor:pointer; font-weight:700;">▶ Riwayat Pencatatan (${historiUrut.length} Catatan)</summary>
-          <div style="margin-top:6px; padding:6px; background:rgba(0,0,0,0.25); border-radius:6px;">
-            ${listRiwayatHtml}
-          </div>
-        </details>
-
-        <div class="grid-ringkasan" style="font-size:0.75rem;">
-          <div>Laju: <strong>${info.rataPerHari} kWh/hr</strong> (Beban: ±${info.wattTerdeteksi || 0} Watt)</div>
-          <div class="sorot-hari" style="margin-top:3px;">
-            Estimasi: <strong>± ${info.estimasiHari} Hari Lagi (${info.tanggalHabis})</strong>
-          </div>
-        </div>
-
-        ${item.koordinat && item.koordinat.lat ? `
-          <a href="https://www.google.com/maps/dir/?api=1&destination=${item.koordinat.lat},${item.koordinat.lng}" target="_blank" class="btn-rute-maps" style="display:block; text-align:center; background:#065f46; color:#34d399; text-decoration:none; padding:8px; border-radius:6px; font-size:0.75rem; font-weight:700; margin-top:8px;">
-            Navigasi Google Maps ➔
-          </a>
-        ` : ''}
-      </div>
-
-      ${footerPetugas}
-    `;
 
     containerDaftar.appendChild(kartu);
   });
@@ -213,7 +284,7 @@ function renderData() {
       const s = dataSarana[indexSaranaTerpilih];
       document.getElementById('edit-lokasi').value = s.lokasi;
       document.getElementById('edit-tipe').value = s.tipe;
-      document.getElementById('edit-jenisLampu').value = s.jenisLampu;
+      document.getElementById('edit-jenisLampu').value = s.jenisLampu || 'FL';
       document.getElementById('edit-jumlahLampu').value = s.jumlahLampu || 0;
       document.getElementById('edit-koordinat').value = s.koordinat ? `${s.koordinat.lat}, ${s.koordinat.lng}` : '';
       document.getElementById('modal-edit').style.display = 'flex';
@@ -238,7 +309,114 @@ function simpanKeStorage() {
   rekamSnapshotWaktu(dataSarana);
 }
 
-// 5. EVENT FORM UPDATE TOKEN
+// 6. EVENT FORM TAMBAH TITIK BARU
+if (formSarana) {
+  formSarana.onsubmit = (e) => {
+    e.preventDefault();
+    const lokasi = document.getElementById('lokasi').value.trim();
+    const tipe = document.getElementById('tipe').value;
+    const jenisLampu = document.getElementById('jenisLampu').value;
+    const isNonLampu = (jenisLampu === 'NONE');
+
+    const jumlahLampu = isNonLampu ? 0 : (Number(document.getElementById('jumlahLampu').value) || 0);
+    const tanggal = isNonLampu 
+      ? new Date().toISOString().split('T')[0] 
+      : (document.getElementById('tanggalPengecekan').value || new Date().toISOString().split('T')[0]);
+    
+    const kwhStr = document.getElementById('sisaKwh').value;
+    if (!isNonLampu && (!kwhStr || isNaN(Number(kwhStr)))) {
+      alert("Untuk sarana berlampu, silakan isi sisa token kWh awal.");
+      document.getElementById('sisaKwh').focus();
+      return;
+    }
+
+    const kwh = isNonLampu ? 0 : Number(kwhStr);
+
+    // Parse koordinat derajat maupun format desimal biasa
+    let koordinat = { lat: -3.8000, lng: 102.2650 };
+    const kStr = document.getElementById('input-koordinat').value;
+    const parsedGps = parseKoordinatFleksibel(kStr);
+    if (parsedGps) koordinat = parsedGps;
+
+    dataSarana.unshift({
+      id: Date.now(),
+      lokasi,
+      tipe,
+      jenisLampu,
+      jumlahLampu,
+      isBerlampu: !isNonLampu,
+      koordinat,
+      riwayatToken: isNonLampu ? [] : [{ tanggal, kwh }]
+    });
+
+    simpanKeStorage();
+    formSarana.reset();
+    if (boxLampuToken) boxLampuToken.style.display = 'block';
+    renderData();
+    alert(`Sarana "${lokasi}" berhasil disimpan!`);
+  };
+}
+
+// 7. EVENT GPS OTOMATIS DI FORM
+document.getElementById('btn-ambil-gps').onclick = async () => {
+  const btn = document.getElementById('btn-ambil-gps');
+  btn.textContent = '⏳ Mengunci GPS...';
+  try {
+    const pos = await dapatkanKoordinatGPS();
+    document.getElementById('input-koordinat').value = `${pos.lat}, ${pos.lng}`;
+    alert(`GPS Terkunci: ${pos.lat}, ${pos.lng} (Akurasi: ±${pos.akurasi}m)`);
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    btn.textContent = 'GPS Otomatis';
+  }
+};
+
+// 8. EVENT TOOLBAR: RUTE URUT DENGAN SENSOR GPS WAJIB
+const btnRute = document.getElementById('btn-tool-rute');
+if (btnRute) {
+  btnRute.onclick = async () => {
+    const teksAsli = btnRute.innerHTML;
+    btnRute.innerHTML = '<span>🛰️</span><span>Kunci GPS...</span>';
+    btnRute.style.opacity = '0.7';
+
+    let posUser = null;
+    try {
+      posUser = await dapatkanKoordinatGPS();
+    } catch (err) {
+      alert("Sensor Lokasi GPS:\n\n" + err.message + "\n\nRute akan dihitung dari titik default pusat kota.");
+      posUser = { lat: -3.8000, lng: 102.2650, akurasi: null };
+    } finally {
+      btnRute.innerHTML = teksAsli;
+      btnRute.style.opacity = '1';
+    }
+
+    try {
+      const { bukaModalOptimasiBBM } = await import('./plugins/fuel-optimizer.js');
+      bukaModalOptimasiBBM(dataSarana, posUser, hitungPrediksiHabis, true);
+    } catch (e) {
+      alert("Gagal membuka rute: " + e.message);
+    }
+  };
+}
+
+// 9. EVENT ESTIMASI ANGGARAN, PDF & WA
+document.getElementById('btn-tool-anggaran').onclick = () => bukaModalAnggaran(dataSarana, hitungPrediksiHabis);
+document.getElementById('btn-tutup-anggaran').onclick = () => { document.getElementById('modal-anggaran').style.display = 'none'; };
+document.getElementById('btn-tutup-anggaran-x').onclick = () => { document.getElementById('modal-anggaran').style.display = 'none'; };
+
+document.getElementById('btn-tool-pdf').onclick = () => generatePDFLaporan(dataSarana, hitungPrediksiHabis);
+
+document.getElementById('btn-ekspor-wa').onclick = async () => {
+  try {
+    const { eksporRekapWhatsApp } = await import('./export-wa.js');
+    eksporRekapWhatsApp(dataSarana, hitungPrediksiHabis);
+  } catch (e) {
+    alert("WA: " + e.message);
+  }
+};
+
+// 10. MODAL UPDATE TOKEN & EDIT
 document.getElementById('form-update').onsubmit = (e) => {
   e.preventDefault();
   if (indexSaranaTerpilih === null) return;
@@ -251,7 +429,6 @@ document.getElementById('form-update').onsubmit = (e) => {
 };
 document.getElementById('btn-tutup-modal').onclick = () => { document.getElementById('modal-update').style.display = 'none'; };
 
-// 6. EVENT FORM EDIT
 document.getElementById('form-edit').onsubmit = (e) => {
   e.preventDefault();
   if (indexSaranaTerpilih === null) return;
@@ -261,48 +438,16 @@ document.getElementById('form-edit').onsubmit = (e) => {
   item.jenisLampu = document.getElementById('edit-jenisLampu').value;
   item.jumlahLampu = Number(document.getElementById('edit-jumlahLampu').value);
   const kStr = document.getElementById('edit-koordinat').value;
-  if (kStr.includes(',')) {
-    const [lat, lng] = kStr.split(',').map(n => parseFloat(n.trim()));
-    if (!isNaN(lat) && !isNaN(lng)) item.koordinat = { lat, lng };
-  }
+  const parsed = parseKoordinatFleksibel(kStr);
+  if (parsed) item.koordinat = parsed;
+
   simpanKeStorage();
   document.getElementById('modal-edit').style.display = 'none';
   renderData();
 };
 document.getElementById('btn-tutup-edit').onclick = () => { document.getElementById('modal-edit').style.display = 'none'; };
 
-// 7. EVENT TOOLBAR
-document.getElementById('btn-tool-anggaran').onclick = () => {
-  bukaModalAnggaran(dataSarana, hitungPrediksiHabis);
-};
-document.getElementById('btn-tutup-anggaran').onclick = () => { document.getElementById('modal-anggaran').style.display = 'none'; };
-document.getElementById('btn-tutup-anggaran-x').onclick = () => { document.getElementById('modal-anggaran').style.display = 'none'; };
-
-document.getElementById('btn-tool-pdf').onclick = () => {
-  generatePDFLaporan(dataSarana, hitungPrediksiHabis);
-};
-
-document.getElementById('btn-tool-rute').onclick = async () => {
-  try {
-    const { bukaModalOptimasiBBM } = await import('./plugins/fuel-optimizer.js');
-    bukaModalOptimasiBBM(dataSarana, { lat: -3.8000, lng: 102.2650 }, hitungPrediksiHabis);
-  } catch (e) { alert("Rute: " + e.message); }
-};
-
-document.getElementById('btn-tool-jarvis-brief').onclick = () => {
-  if ('speechSynthesis' in window) {
-    window.speechSynthesis.cancel();
-    const infoBbm = getStatusBBM();
-    const teks = isPetugas 
-      ? `Halo Aditiya, patroli siap. 19 sarana terpantau. Saldo BBM tersisa Rp ${infoBbm.sisa.toLocaleString('id-ID')}. Periksa jadwal misi hari ini.`
-      : `Selamat datang di Radar Digital PT Devis Jaya. Ini adalah sistem pemantauan sarana reklame Kota Bengkulu. Anda berada pada mode tamu.`;
-    const ut = new SpeechSynthesisUtterance(teks);
-    ut.lang = 'id-ID';
-    window.speechSynthesis.speak(ut);
-  }
-};
-
-// 8. BRANKAS DATA & MESIN WAKTU EVENT
+// 11. BRANKAS & MESIN WAKTU
 const modalVault = document.getElementById('modal-vault');
 document.getElementById('btn-buka-vault').onclick = () => {
   modalVault.style.display = 'flex';
@@ -347,9 +492,9 @@ document.getElementById('input-file-restore').onchange = (e) => {
   const reader = new FileReader();
   reader.onload = (evt) => {
     try {
-      const data = JSON.parse(evt.target.result);
-      if (Array.isArray(data) && data.length > 0) {
-        dataSarana = data;
+      const d = JSON.parse(evt.target.result);
+      if (Array.isArray(d) && d.length > 0) {
+        dataSarana = d;
         simpanKeStorage();
         renderData();
         modalVault.style.display = 'none';
@@ -360,7 +505,7 @@ document.getElementById('input-file-restore').onchange = (e) => {
   reader.readAsText(f);
 };
 
-// 9. EVENT PIN PETUGAS
+// 12. AUTENTIKASI PIN
 const modalAuth = document.getElementById('modal-auth');
 document.getElementById('btn-toggle-auth').onclick = () => {
   if (isPetugas) {
@@ -390,7 +535,7 @@ document.getElementById('form-auth-pin').onsubmit = (e) => {
   }
 };
 
-// 10. FILTER PENCARIAN
+// 13. FILTER
 inputCari.oninput = renderData;
 filterTipe.onchange = renderData;
 filterLampu.onchange = renderData;
@@ -403,7 +548,7 @@ document.querySelectorAll('.tab-filter').forEach(btn => {
   };
 });
 
-// 11. NAVIGASI TAB BAWAH
+// 14. NAVIGASI TAB BAWAH
 document.querySelectorAll('.nav-item').forEach(btn => {
   btn.onclick = () => {
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -423,7 +568,7 @@ document.querySelectorAll('.nav-item').forEach(btn => {
   };
 });
 
-// 12. RENDER MISI & BBM
+// 15. MISI & BBM
 function renderMisiDanBBM() {
   const containerMisi = document.getElementById('container-list-misi');
   const misi = dapatkanMisiHariIni();

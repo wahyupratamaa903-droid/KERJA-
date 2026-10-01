@@ -60,12 +60,14 @@ export function optimasiRuteBBM(daftarSarana, posisiUser, fnHitungPrediksi, hany
     return { error: "Belum ada data sarana." };
   }
 
-  const posAwal = (posisiUser && posisiUser.lat) ? posisiUser : { lat: -3.8000, lng: 102.2650 };
-  const saranaDenganGps = daftarSarana.filter(s => s.koordinat && s.koordinat.lat && s.koordinat.lng);
+  const saranaDenganGps = daftarSarana.filter(s => s.koordinat && typeof s.koordinat.lat === 'number' && typeof s.koordinat.lng === 'number');
 
   if (saranaDenganGps.length === 0) {
     return { error: "Belum ada koordinat GPS valid pada sarana." };
   }
+
+  const isRealGps = (posisiUser && typeof posisiUser.lat === 'number' && posisiUser.lat !== -3.8000);
+  const posAwal = isRealGps ? posisiUser : { lat: -3.8000, lng: 102.2650 };
 
   let kandidat = [];
 
@@ -112,6 +114,7 @@ export function optimasiRuteBBM(daftarSarana, posisiUser, fnHitungPrediksi, hany
     });
   }
 
+  // Nearest Neighbor dari posisi awal pengguna
   const tahap1 = [];
   let sisaKandidat = [...kandidat];
   let curPos = posAwal;
@@ -135,13 +138,14 @@ export function optimasiRuteBBM(daftarSarana, posisiUser, fnHitungPrediksi, hany
 
   let totalJarakKm = 0;
   let titikLalu = posAwal;
-  const ruteDenganDetail = ruteFinal.map(item => {
+  const ruteDenganDetail = ruteFinal.map((item, idx) => {
     const legDist = hitungJarakLurus(titikLalu.lat, titikLalu.lng, item.koordinat.lat, item.koordinat.lng);
     totalJarakKm += legDist;
     titikLalu = item.koordinat;
     return {
       ...item,
-      jarakLeg: Number(legDist.toFixed(1))
+      jarakLeg: Number(legDist.toFixed(1)),
+      keteranganDari: idx === 0 ? "dari lokasi Anda sekarang" : "dari titik sebelumnya"
     };
   });
 
@@ -152,6 +156,8 @@ export function optimasiRuteBBM(daftarSarana, posisiUser, fnHitungPrediksi, hany
 
   return {
     posisiAwal: posAwal,
+    isRealGps,
+    akurasi: posisiUser ? posisiUser.akurasi : null,
     ruteUrutan: ruteDenganDetail,
     totalTitik: ruteDenganDetail.length,
     totalSemua: saranaDenganGps.length,
@@ -191,7 +197,6 @@ export function bukaModalOptimasiBBM(daftarSarana, posisiUser, fnHitungPrediksi,
   }
 
   const linkGmaps = buatTautanGoogleMaps(hasil.ruteUrutan, hasil.posisiAwal);
-  const isGpsReal = posisiUser && posisiUser.lat && (posisiUser.lat !== -3.8000 || posisiUser.lng !== 102.2650);
 
   const daftarStepHtml = hasil.ruteUrutan.map((s, idx) => {
     let kwhTampil = '-';
@@ -212,7 +217,7 @@ export function bukaModalOptimasiBBM(daftarSarana, posisiUser, fnHitungPrediksi,
         <div>
           <strong style="color:#fff; font-size:0.8rem;">${idx + 1}. ${s.lokasi}</strong>
           <div style="color:#94a3b8; font-size:0.68rem; margin-top:2px;">
-            Jarak: +${s.jarakLeg} km dari titik sebelumnya • ${s.isNonLampu ? '🏷️ Non-Lampu' : `Sisa: ${kwhTampil} (${estTampil})`}
+            Jarak: +${s.jarakLeg} km (${s.keteranganDari}) • ${s.isNonLampu ? '🏷️ Non-Lampu' : `Sisa: ${kwhTampil}`}
           </div>
         </div>
         <a href="https://www.google.com/maps/dir/?api=1&destination=${s.koordinat.lat},${s.koordinat.lng}" target="_blank" style="color:#38bdf8; text-decoration:none; font-size:0.75rem; font-weight:700;">Maps ➔</a>
@@ -227,9 +232,19 @@ export function bukaModalOptimasiBBM(daftarSarana, posisiUser, fnHitungPrediksi,
         <button type="button" id="btn-tutup-rute-bbm" style="background:transparent; border:none; color:#94a3b8; font-size:1.3rem; cursor:pointer;">✕</button>
       </div>
 
-      <div style="font-size:0.7rem; color:${isGpsReal ? '#10b981' : '#f59e0b'}; margin-bottom:8px; display:flex; align-items:center; gap:4px;">
-        <span>${isGpsReal ? '📍 Posisi GPS Anda Terdeteksi' : '⚠️️ GPS Default (Bengkulu Kota)'}:</span>
-        <strong>${hasil.posisiAwal.lat.toFixed(4)}, ${hasil.posisiAwal.lng.toFixed(4)}</strong>
+      <!-- STATUS GPS REAL -->
+      <div style="background:${hasil.isRealGps ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)'}; border:1px solid ${hasil.isRealGps ? '#10b981' : '#f59e0b'}; padding:8px 10px; border-radius:6px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <div style="font-size:0.75rem; font-weight:700; color:${hasil.isRealGps ? '#10b981' : '#f59e0b'};">
+            ${hasil.isRealGps ? '📍 Posisi GPS HP Anda Terkunci' : '⚠️ Posisi Default Pusat Kota'}
+          </div>
+          <div style="font-size:0.68rem; color:#cbd5e1;">
+            ${hasil.posisiAwal.lat.toFixed(5)}, ${hasil.posisiAwal.lng.toFixed(5)} ${hasil.akurasi ? `(±${hasil.akurasi}m)` : ''}
+          </div>
+        </div>
+        <button type="button" id="btn-refresh-gps-modal" style="background:#0284c7; color:#fff; border:none; padding:4px 8px; border-radius:4px; font-size:0.68rem; font-weight:700; cursor:pointer;">
+          🔄 Kunci GPS
+        </button>
       </div>
 
       <div style="display:flex; gap:6px; margin-bottom:10px;">
@@ -258,7 +273,7 @@ export function bukaModalOptimasiBBM(daftarSarana, posisiUser, fnHitungPrediksi,
         </div>
       </div>
 
-      <div style="font-size:0.75rem; font-weight:700; color:#fff; margin-bottom:6px;">Urutan Dari Lokasi Terdekat Anda:</div>
+      <div style="font-size:0.75rem; font-weight:700; color:#fff; margin-bottom:6px;">Urutan Dari Titik Terdekat Anda:</div>
       <div style="max-height: 230px; overflow-y: auto; padding-right: 4px; margin-bottom:10px;">
         ${daftarStepHtml}
       </div>
@@ -275,5 +290,18 @@ export function bukaModalOptimasiBBM(daftarSarana, posisiUser, fnHitungPrediksi,
   };
   modal.querySelector('#btn-mode-rute-semua').onclick = () => {
     bukaModalOptimasiBBM(daftarSarana, posisiUser, fnHitungPrediksi, false);
+  };
+
+  modal.querySelector('#btn-refresh-gps-modal').onclick = async () => {
+    const btnRef = modal.querySelector('#btn-refresh-gps-modal');
+    btnRef.textContent = '⏳ Mengunci...';
+    try {
+      const { dapatkanKoordinatGPS } = await import('../gps.js');
+      const posBaru = await dapatkanKoordinatGPS();
+      bukaModalOptimasiBBM(daftarSarana, posBaru, fnHitungPrediksi, hanyaPrioritas);
+    } catch (e) {
+      alert(e.message);
+      btnRef.textContent = '🔄 Coba Lagi';
+    }
   };
 }

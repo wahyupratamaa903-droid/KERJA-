@@ -1,28 +1,38 @@
-// js/gps.js - Deteksi Posisi GPS Akurasi Tinggi
+// js/gps.js - Deteksi Sensor Posisi Satelit GPS Lapangan
 export function dapatkanKoordinatGPS() {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
-      return reject(new Error("Perangkat tidak mendukung fitur lokasi GPS."));
+      return reject(new Error("Perangkat tidak mendukung sensor geolokasi GPS."));
     }
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         resolve({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          akurasi: pos.coords.accuracy
+          lat: Number(pos.coords.latitude.toFixed(6)),
+          lng: Number(pos.coords.longitude.toFixed(6)),
+          akurasi: Math.round(pos.coords.accuracy)
         });
       },
       (err) => {
-        let pesan = "Gagal mengambil lokasi.";
-        if (err.code === 1) pesan = "Izin lokasi GPS ditolak oleh peramban. Mohon izinkan akses lokasi.";
-        else if (err.code === 2) pesan = "Sinyal GPS tidak terdeteksi. Pastikan GPS HP aktif.";
-        else if (err.code === 3) pesan = "Waktu pencarian GPS habis.";
-        reject(new Error(pesan));
+        let alasan = "";
+        switch (err.code) {
+          case 1: // PERMISSION_DENIED
+            alasan = "IZIN LOKASI DITOLAK: Peramban Chrome memblokir akses lokasi untuk web ini.\n\nCara Membuka:\n1. Ketuk ikon Setelan/Gembok di sebelah kiri bilah URL atas.\n2. Pilih 'Izin' atau 'Setelan Situs'.\n3. Ubah 'Lokasi' menjadi 'IZINKAN'.";
+            break;
+          case 2: // POSITION_UNAVAILABLE
+            alasan = "GPS HP TIDAK AKTIF: Sinyal GPS satelit tidak terdeteksi. Pastikan tombol 'Lokasi / GPS' di bar notifikasi HP Anda sudah dinyalakan.";
+            break;
+          case 3: // TIMEOUT
+            alasan = "WAKTU HABIS: Satelit GPS membutuhkan waktu lebih lama untuk mengunci posisi. Pastikan Anda berada di luar ruangan dengan pandangan langit terbuka.";
+            break;
+          default:
+            alasan = err.message || "Gagal memperoleh koordinat GPS.";
+        }
+        reject(new Error(alasan));
       },
       {
         enableHighAccuracy: true,
-        timeout: 12000,
+        timeout: 10000,
         maximumAge: 0
       }
     );

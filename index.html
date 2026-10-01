@@ -22,12 +22,10 @@
 </head>
 <body>
   <div class="wrapper">
-    <!-- TOP HEADER -->
     <header class="top-header-bar">
       <div class="header-brand">
         <span class="brand-title">PT DEVIS JAYA</span>
         <span class="live-pill"><span class="live-dot"></span><span id="label-sync-status">Firebase Live</span></span>
-        <!-- INDIKATOR CUACA MANDIRI TERPISAH -->
         <span id="pill-cuaca-bengkulu" style="font-size:0.65rem; background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.3); color:#38bdf8; padding:2px 6px; border-radius:4px; font-weight:700;">
           ⛅ Bengkulu...
         </span>
@@ -38,7 +36,6 @@
       </div>
     </header>
 
-    <!-- VIEW 1: SARANA -->
     <main id="view-sarana" class="tab-view active">
       <section class="panel-statistik">
         <div class="stat-item">
@@ -89,27 +86,33 @@
             </select>
           </div>
         </div>
-        <div class="form-group">
-          <label for="jumlahLampu">Jumlah Titik Lampu</label>
-          <input type="number" id="jumlahLampu" placeholder="Jumlah titik lampu" min="0">
-        </div>
-        <div class="form-row">
+
+        <!-- WADAH OPSIONAL: OTOMATIS HILANG JIKA TANPA LAMPU -->
+        <div id="box-opsi-lampu-token">
           <div class="form-group">
-            <label for="tanggalPengecekan">Tanggal Catat</label>
-            <input type="date" id="tanggalPengecekan" required>
+            <label for="jumlahLampu">Jumlah Titik Lampu</label>
+            <input type="number" id="jumlahLampu" placeholder="Jumlah titik lampu" min="0">
           </div>
-          <div class="form-group">
-            <label for="sisaKwh">Sisa Token (kWh)</label>
-            <div class="input-ocr-group">
-              <input type="number" step="any" id="sisaKwh" placeholder="Contoh: 10542" required>
-              <button type="button" id="btn-scan-form" class="btn-ocr-scan">📷 OCR</button>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="tanggalPengecekan">Tanggal Catat</label>
+              <input type="date" id="tanggalPengecekan">
+            </div>
+            <div class="form-group">
+              <label for="sisaKwh">Sisa Token (kWh)</label>
+              <div class="input-ocr-group">
+                <!-- TIDAK ADA ATRIBUT REQUIRED STATIS -->
+                <input type="number" step="any" id="sisaKwh" placeholder="Contoh: 10542">
+                <button type="button" id="btn-scan-form" class="btn-ocr-scan">📷 OCR</button>
+              </div>
             </div>
           </div>
         </div>
+
         <div class="form-group">
           <label for="input-koordinat">Titik Koordinat</label>
           <div class="gps-input-group">
-            <input type="text" id="input-koordinat" placeholder="Contoh: -3.797733, 102.266305">
+            <input type="text" id="input-koordinat" placeholder="Contoh: -3.797733, 102.266305 atau format °S, °E">
             <button type="button" id="btn-ambil-gps" class="btn-gps-auto">GPS Otomatis</button>
           </div>
         </div>
@@ -120,7 +123,6 @@
         <button type="submit" class="btn-submit">Simpan Sarana Baru</button>
       </form>
 
-      <!-- PENCARIAN & FILTER -->
       <div class="kontrol-pencarian">
         <h2 class="judul-bagian">Daftar Sarana Lapangan</h2>
         <input type="text" id="input-cari" class="input-cari-jalan" placeholder="Cari nama jalan atau tipe sarana...">
@@ -151,7 +153,6 @@
       <div id="daftar-sarana"></div>
     </main>
 
-    <!-- VIEW 2: PETA RADAR -->
     <main id="view-peta" class="tab-view">
       <div class="map-overlay-box">
         <span style="font-weight:700; color:#fff;">Radar Tiang Kota Bengkulu</span>
@@ -159,12 +160,12 @@
           <span class="leg-item"><span class="leg-dot" style="background:#ef4444;"></span>Kritis</span>
           <span class="leg-item"><span class="leg-dot" style="background:#f59e0b;"></span>Waspada</span>
           <span class="leg-item"><span class="leg-dot" style="background:#10b981;"></span>Aman</span>
+          <span class="leg-item"><span class="leg-dot" style="background:#06b6d4;"></span>Non-Lampu</span>
         </div>
       </div>
       <div id="peta-gis" style="height: calc(100vh - 140px); width:100%;"></div>
     </main>
 
-    <!-- VIEW 3: MISI & BBM -->
     <main id="view-misi" class="tab-view">
       <section class="misi-card">
         <div class="misi-header">
@@ -212,14 +213,12 @@
     </main>
   </div>
 
-  <!-- FLOATING MIC -->
   <div id="hud-voice" class="hud-voice-banner">
     <span class="live-dot" style="background:#ef4444;"></span>
     <span id="teks-hud-voice">Devis Jarvis mendengarkan...</span>
   </div>
   <button type="button" id="fab-voice-cmd" class="fab-jarvis-mic" title="Voice Commander">🎙️</button>
 
-  <!-- MODAL ESTIMASI ANGGARAN TOKEN (PERSIS FORMAT ASLI) -->
   <div id="modal-anggaran" class="modal-backdrop">
     <div class="modal-konten" style="max-width: 400px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
@@ -232,19 +231,17 @@
     </div>
   </div>
 
-  <!-- MODAL BRANKAS & KEAMANAN DATA -->
   <div id="modal-vault" class="modal-backdrop">
     <div class="modal-konten" style="max-width: 380px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
         <h3 style="color:#fff; font-size:1rem;">🛡️ Brankas & Keamanan Data</h3>
         <button type="button" id="btn-tutup-vault" style="background:transparent; border:none; color:#94a3b8; font-size:1.2rem; cursor:pointer;">✕</button>
       </div>
-
       <div class="vault-section">
         <div class="vault-section-title" style="font-size:0.75rem; font-weight:700; color:#38bdf8; margin-bottom:8px;">📦 CADANGAN FISIK MANDIRI</div>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
           <button type="button" id="btn-vault-github" class="btn-tool" style="grid-column:span 2; justify-content:center; padding:10px; border-color:#3b82f6;">
-            <span>🚀</span><span>Simpan ke GitHub (Tanpa Termux)</span>
+            <span>🚀</span><span>Simpan ke GitHub</span>
           </button>
           <button type="button" id="btn-vault-unduh" class="btn-tool" style="justify-content:center; padding:8px;">
             <span>💾</span><span>Unduh (.json)</span>
@@ -256,20 +253,17 @@
         <div style="margin-top:8px;">
           <input type="file" id="input-file-restore" accept=".json" style="display:none;">
           <button type="button" id="btn-vault-pulihkan-file" class="btn-tool" style="width:100%; justify-content:center; padding:8px; border-color:#10b981;">
-            <span>📥</span><span>Pulihkan dari File Cadangan (.json)</span>
+            <span>📥</span><span>Pulihkan dari File (.json)</span>
           </button>
         </div>
       </div>
-
       <div class="vault-section" style="margin-top:14px;">
-        <div class="vault-section-title" style="font-size:0.75rem; font-weight:700; color:#38bdf8; margin-bottom:6px;">⏱️ MESIN WAKTU (SNAPSHOT OTOMATIS)</div>
-        <p style="font-size:0.68rem; color:#94a3b8; margin-bottom:8px;">Pilih titik waktu untuk mengembalikan data jika terjadi salah edit.</p>
+        <div class="vault-section-title" style="font-size:0.75rem; font-weight:700; color:#38bdf8; margin-bottom:6px;">⏱️ MESIN WAKTU (SNAPSHOT)</div>
         <div id="kontainer-snapshot" style="max-height:160px; overflow-y:auto;"></div>
       </div>
     </div>
   </div>
 
-  <!-- MODAL CATAT TOKEN -->
   <div id="modal-update" class="modal-backdrop">
     <div class="modal-konten">
       <h3>Catat Token Baru</h3>
@@ -294,7 +288,6 @@
     </div>
   </div>
 
-  <!-- MODAL EDIT SARANA -->
   <div id="modal-edit" class="modal-backdrop">
     <div class="modal-konten">
       <h3>Edit Data Sarana</h3>
@@ -338,7 +331,6 @@
     </div>
   </div>
 
-  <!-- MODAL AUTH PIN -->
   <div id="modal-auth" class="modal-backdrop">
     <div class="modal-konten" style="max-width:320px; text-align:center;">
       <div style="font-size:2rem; margin-bottom:6px;">🔐</div>
@@ -354,7 +346,6 @@
     </div>
   </div>
 
-  <!-- BOTTOM NAV -->
   <nav class="nav-bottom">
     <button type="button" class="nav-item active" data-tab="view-sarana">
       <span style="font-size:1.1rem;">📍</span><span>Sarana</span>
