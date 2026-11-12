@@ -1,7 +1,11 @@
-// MODUL MANDIRI: GALERI DOKUMENTASI BULANAN & KIRIM MASSAL WHATSAPP (1-KLIK SEMUA ALBUM)
+// MODUL MANDIRI: GALERI DOKUMENTASI BULANAN & ANTREAN WHATSAPP BERURUTAN OTOMATIS
 
 const DB_NAME = 'DevisPhotoGalleryDB';
 const STORE_NAME = 'album_foto_sarana';
+
+// Menyimpan posisi antrean kirim agar tidak pernah mengulang dari nomor 1
+let indexAntreanAktif = 0;
+let daftarSudahTerkirimSesiIni = new Set();
 
 function bukaDbFoto() {
   return new Promise((resolve, reject) => {
@@ -47,7 +51,6 @@ async function hapusAlbumDariDb(id) {
   });
 }
 
-// Kompresi gambar HD + opsional label nama lokasi di sudut bawah agar tidak tertukar saat dikirim massal
 function prosesFileKeDataUrl(file) {
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -71,7 +74,33 @@ function prosesFileKeDataUrl(file) {
   });
 }
 
-// Konversi instan sinkron (0 milidetik) agar izin klik share Chrome Android tidak kedaluwarsa saat kirim banyak foto
+// Menempelkan pita keterangan lokasi di bagian bawah foto khusus saat kirim gabungan massal
+function buatFotoDenganLabelLokasi(dataUrl, teksLokasi, nomorUrut) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+
+      const tinggiBar = Math.max(42, Math.round(img.height * 0.065));
+      ctx.fillStyle = 'rgba(6, 9, 17, 0.82)';
+      ctx.fillRect(0, img.height - tinggiBar, img.width, tinggiBar);
+
+      const ukuranFont = Math.max(16, Math.round(tinggiBar * 0.46));
+      ctx.font = `bold ${ukuranFont}px sans-serif`;
+      ctx.fillStyle = '#38bdf8';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`📍 [${nomorUrut}] ${teksLokasi}`, 16, img.height - (tinggiBar / 2));
+
+      resolve(canvas.toDataURL('image/jpeg', 0.85));
+    };
+    img.src = dataUrl;
+  });
+}
+
 function dataUrlKeFileCepat(dataUrl, namaFile) {
   const arr = dataUrl.split(',');
   const mimeMatch = arr[0].match(/:(.*?);/);
@@ -113,7 +142,8 @@ export async function bukaModalGaleriWA(daftarSarana) {
         sarana: s,
         koleksi: cocokKat,
         sudahDifoto: totalFoto > 0,
-        totalFoto
+        totalFoto,
+        sudahDikirimWA: daftarSudahTerkirimSesiIni.has(Number(s.id))
       };
     });
 
@@ -121,6 +151,9 @@ export async function bukaModalGaleriWA(daftarSarana) {
     const jmlSudah = daftarSudahDifoto.length;
     const jmlBelum = daftarStatusSarana.length - jmlSudah;
     const totalSeluruhFoto = daftarSudahDifoto.reduce((sum, x) => sum + x.totalFoto, 0);
+
+    // Pastikan indexAntreanAktif selalu menunjuk ke lokasi yang belum dikirim
+    if (indexAntreanAktif >= jmlSudah) indexAntreanAktif = 0;
 
     let daftarTampil = daftarStatusSarana;
     if (filterStatus === 'SUDAH') daftarTampil = daftarSudahDifoto;
@@ -130,6 +163,7 @@ export async function bukaModalGaleriWA(daftarSarana) {
       const s = item.sarana;
       const isNonLampu = (s.jenisLampu === 'NONE' || s.isBerlampu === false);
       const semuaFotoTitik = item.koleksi.flatMap(k => k.fotoList || []);
+      const urutanDiAntrean = daftarSudahDifoto.findIndex(x => Number(x.sarana.id) === Number(s.id));
 
       const previewFotoHtml = semuaFotoTitik.length > 0 ? `
         <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:4px; margin-top:8px;">
@@ -143,16 +177,16 @@ export async function bukaModalGaleriWA(daftarSarana) {
       ` : '';
 
       return `
-        <div style="background:rgba(15,23,42,0.8); border:1px solid rgba(255,255,255,0.08); border-left:4px solid ${item.sudahDifoto ? '#10b981' : '#ef4444'}; padding:10px; border-radius:8px; margin-bottom:8px;">
+        <div style="background:rgba(15,23,42,0.8); border:1px solid ${urutanDiAntrean === indexAntreanAktif && item.sudahDifoto ? '#38bdf8' : 'rgba(255,255,255,0.08)'}; border-left:4px solid ${item.sudahDikirimWA ? '#38bdf8' : item.sudahDifoto ? '#10b981' : '#ef4444'}; padding:10px; border-radius:8px; margin-bottom:8px;">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:6px;">
             <div>
               <span style="font-size:0.65rem; color:${isNonLampu ? '#06b6d4' : '#94a3b8'}; font-weight:700;">
-                ${s.tipe} • ${isNonLampu ? 'NON-LAMPU' : s.jenisLampu}
+                ${urutanDiAntrean !== -1 ? `[Album #${urutanDiAntrean + 1}] ` : ''}${s.tipe} • ${isNonLampu ? 'NON-LAMPU' : s.jenisLampu}
               </span>
               <div style="color:#fff; font-weight:700; font-size:0.82rem; margin-top:1px;">${s.lokasi}</div>
             </div>
-            <span style="font-size:0.65rem; padding:2px 6px; border-radius:4px; font-weight:700; background:${item.sudahDifoto ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}; color:${item.sudahDifoto ? '#10b981' : '#ef4444'}; white-space:nowrap;">
-              ${item.sudahDifoto ? `✅ ${item.totalFoto} Foto` : '❌ Belum Foto'}
+            <span style="font-size:0.65rem; padding:2px 6px; border-radius:4px; font-weight:700; background:${item.sudahDikirimWA ? 'rgba(56,189,248,0.2)' : item.sudahDifoto ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}; color:${item.sudahDikirimWA ? '#38bdf8' : item.sudahDifoto ? '#10b981' : '#ef4444'}; white-space:nowrap;">
+              ${item.sudahDikirimWA ? `☑️ Terkirim (${item.totalFoto})` : item.sudahDifoto ? `✅ ${item.totalFoto} Foto` : '❌ Belum Foto'}
             </span>
           </div>
 
@@ -163,8 +197,8 @@ export async function bukaModalGaleriWA(daftarSarana) {
               📷 + Tambah Foto
             </button>
             ${item.sudahDifoto ? `
-              <button type="button" class="btn-share-wa-titik" data-id="${s.id}" style="flex:1.3; background:#059669; color:#fff; border:none; padding:6px; border-radius:6px; font-size:0.7rem; font-weight:700; cursor:pointer;">
-                📲 Kirim Album ke WA
+              <button type="button" class="btn-share-wa-titik" data-id="${s.id}" data-urut="${urutanDiAntrean}" style="flex:1.3; background:${item.sudahDikirimWA ? '#334155' : '#059669'}; color:#fff; border:none; padding:6px; border-radius:6px; font-size:0.7rem; font-weight:700; cursor:pointer;">
+                ${item.sudahDikirimWA ? '🔄 Kirim Ulang' : '📲 Kirim Album ke WA'}
               </button>
               <button type="button" class="btn-hapus-foto-titik" data-id="${s.id}" style="background:#ef4444; color:#fff; border:none; padding:6px 8px; border-radius:6px; font-size:0.7rem; cursor:pointer;">
                 🗑️
@@ -174,6 +208,9 @@ export async function bukaModalGaleriWA(daftarSarana) {
         </div>
       `;
     }).join('');
+
+    const itemAntreanSekarang = daftarSudahDifoto[indexAntreanAktif];
+    const jmlTerkirimSesi = daftarSudahDifoto.filter(x => x.sudahDikirimWA).length;
 
     modal.innerHTML = `
       <div class="modal-konten" style="max-width:420px; z-index:10000;">
@@ -206,22 +243,35 @@ export async function bukaModalGaleriWA(daftarSarana) {
 
         <input type="file" id="input-multi-foto-galeri" accept="image/*" multiple style="display:none;">
 
-        <div style="max-height:255px; overflow-y:auto; padding-right:4px; margin-bottom:10px;">
+        <div style="max-height:220px; overflow-y:auto; padding-right:4px; margin-bottom:10px;">
           ${kartuHtml}
         </div>
 
-        <!-- PANEL TOMBOL KIRIM MASSAL SEMUA ALBUM SEKALIGUS -->
-        <div style="display:flex; flex-direction:column; gap:6px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
-          ${jmlSudah > 0 ? `
-            <button type="button" id="btn-kirim-semua-foto-sekaligus" style="width:100%; background:linear-gradient(90deg,#059669,#10b981); color:#fff; border:none; padding:10px; border-radius:8px; font-size:0.78rem; font-weight:800; cursor:pointer; box-shadow:0 4px 12px rgba(16,185,129,0.25);">
-              🚀 Kirim SEMUA Foto Sekaligus ke WA (${jmlSudah} Lokasi • ${totalSeluruhFoto} Foto)
-            </button>
-            <button type="button" id="btn-kirim-beruntun-per-lokasi" style="width:100%; background:#1e293b; color:#38bdf8; border:1px solid rgba(56,189,248,0.4); padding:8px; border-radius:8px; font-size:0.73rem; font-weight:700; cursor:pointer;">
-              ⏭️ Kirim Terpisah Per Album Lokasi Beruntun (1 s/d ${jmlSudah})
+        <!-- PANEL PENGIRIMAN PINTAR ANTI-MENGULANG -->
+        <div style="display:flex; flex-direction:column; gap:6px; border-top:1px solid rgba(255,255,255,0.12); padding-top:10px;">
+          ${itemAntreanSekarang ? `
+            <div style="background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.4); padding:8px 10px; border-radius:8px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.68rem; color:#a7f3d0; margin-bottom:4px;">
+                <span>⏭️ <strong>ANTREAN BERURUT OTOMATIS (${indexAntreanAktif + 1} dari ${jmlSudah})</strong></span>
+                <span>Terkirim: ${jmlTerkirimSesi}/${jmlSudah}</span>
+              </div>
+              <button type="button" id="btn-kirim-antrean-berikutnya" style="width:100%; background:linear-gradient(90deg,#059669,#10b981); color:#fff; border:none; padding:10px; border-radius:6px; font-size:0.78rem; font-weight:800; cursor:pointer; box-shadow:0 4px 12px rgba(16,185,129,0.3);">
+                📲 Kirim Lokasi #${indexAntreanAktif + 1}: ${itemAntreanSekarang.sarana.lokasi.slice(0, 28)} (${itemAntreanSekarang.totalFoto} Foto) ➔
+              </button>
+              <div style="display:flex; justify-content:space-between; margin-top:5px;">
+                <button type="button" id="btn-mundur-antrean" style="background:transparent; border:none; color:#94a3b8; font-size:0.66rem; cursor:pointer;">◀ Lokasi Sebelumnya</button>
+                <button type="button" id="btn-reset-antrean" style="background:transparent; border:none; color:#38bdf8; font-size:0.66rem; cursor:pointer;">🔄 Reset Urutan ke #1</button>
+                <button type="button" id="btn-lompat-antrean" style="background:transparent; border:none; color:#94a3b8; font-size:0.66rem; cursor:pointer;">Lewati ke #${((indexAntreanAktif + 1) % jmlSudah) + 1} ▶</button>
+              </div>
+            </div>
+
+            <button type="button" id="btn-kirim-semua-foto-sekaligus" style="width:100%; background:#1e293b; color:#38bdf8; border:1px solid rgba(56,189,248,0.4); padding:8px; border-radius:8px; font-size:0.73rem; font-weight:700; cursor:pointer;">
+              🚀 Gabung & Kirim SEMUA ${totalSeluruhFoto} Foto Sekaligus (Watermark Nama Jalan)
             </button>
           ` : ''}
+
           <button type="button" id="btn-rekap-teks-wa-atasan" style="width:100%; background:#0284c7; color:#fff; border:none; padding:8px; border-radius:8px; font-size:0.73rem; font-weight:700; cursor:pointer;">
-            📋 Kirim Teks Checklist Saja (${jmlSudah}/${daftarStatusSarana.length} Selesai) ke WA
+            📋 Kirim Teks Checklist (${jmlSudah}/${daftarStatusSarana.length} Selesai) ke WA
           </button>
         </div>
       </div>
@@ -238,7 +288,6 @@ export async function bukaModalGaleriWA(daftarSarana) {
       btn.onclick = () => renderGaleri(elBulan.value, elKat.value, btn.dataset.st);
     });
 
-    // Upload banyak foto ke satu lokasi
     const inputFoto = modal.querySelector('#input-multi-foto-galeri');
     let idSaranaTargetUpload = null;
 
@@ -277,8 +326,8 @@ export async function bukaModalGaleriWA(daftarSarana) {
       renderGaleri(elBulan.value, elKat.value, filterStatus);
     };
 
-    // Fungsi bantu kirim 1 titik lokasi
-    async function bagikanSatuTitikKeWA(targetObj) {
+    // Fungsi Inti Kirim 1 Album Lokasi + Otomatis Geser Antrean ke Lokasi Berikutnya
+    async function kirimSatuAlbumDanMaju(targetObj, urutanSekarang) {
       const semuaFotoData = targetObj.koleksi.flatMap(k => k.fotoList || []);
       const namaLokasiCaption = targetObj.sarana.lokasi;
       const fileArray = semuaFotoData.map((dUrl, i) =>
@@ -288,6 +337,17 @@ export async function bukaModalGaleriWA(daftarSarana) {
       if (navigator.clipboard) {
         navigator.clipboard.writeText(namaLokasiCaption).catch(() => {});
       }
+
+      // Tandai sudah dikirim & majukan antrean ke lokasi berikutnya SEBELUM berpindah ke WA
+      daftarSudahTerkirimSesiIni.add(Number(targetObj.sarana.id));
+      if (urutanSekarang !== undefined && urutanSekarang >= 0) {
+        indexAntreanAktif = (urutanSekarang + 1) % daftarSudahDifoto.length;
+      }
+
+      // Render ulang di belakang layar agar saat pengguna kembali dari WA, tombol sudah siap di Lokasi #2, #3, dst!
+      setTimeout(() => {
+        renderGaleri(elBulan.value, elKat.value, filterStatus);
+      }, 400);
 
       if (navigator.canShare && navigator.canShare({ files: fileArray })) {
         await navigator.share({
@@ -299,42 +359,82 @@ export async function bukaModalGaleriWA(daftarSarana) {
       }
     }
 
-    // 1. Kirim Album Satu Lokasi
+    // Klik dari tombol per kartu
     modal.querySelectorAll('.btn-share-wa-titik').forEach(btn => {
       btn.onclick = async () => {
         const idS = Number(btn.dataset.id);
+        const urut = Number(btn.dataset.urut);
         const targetObj = daftarStatusSarana.find(x => Number(x.sarana.id) === idS);
         if (targetObj) {
-          try { await bagikanSatuTitikKeWA(targetObj); } catch (e) {}
+          try { await kirimSatuAlbumDanMaju(targetObj, urut); } catch (e) {}
         }
       };
     });
 
-    // 2. TOMBOL BARU: KIRIM SEMUA FOTO DARI SEMUA LOKASI SEKALIGUS (1 KALI PENCET)
+    // Klik dari Tombol Utama Antrean Berurut Otomatis (#1 -> #2 -> #3 -> #4)
+    const btnAntrean = modal.querySelector('#btn-kirim-antrean-berikutnya');
+    if (btnAntrean && itemAntreanSekarang) {
+      btnAntrean.onclick = async () => {
+        try {
+          await kirimSatuAlbumDanMaju(itemAntreanSekarang, indexAntreanAktif);
+        } catch (e) {}
+      };
+    }
+
+    const btnMundur = modal.querySelector('#btn-mundur-antrean');
+    if (btnMundur) {
+      btnMundur.onclick = () => {
+        indexAntreanAktif = (indexAntreanAktif - 1 + jmlSudah) % jmlSudah;
+        renderGaleri(elBulan.value, elKat.value, filterStatus);
+      };
+    }
+
+    const btnLompat = modal.querySelector('#btn-lompat-antrean');
+    if (btnLompat) {
+      btnLompat.onclick = () => {
+        indexAntreanAktif = (indexAntreanAktif + 1) % jmlSudah;
+        renderGaleri(elBulan.value, elKat.value, filterStatus);
+      };
+    }
+
+    const btnResetAntrean = modal.querySelector('#btn-reset-antrean');
+    if (btnResetAntrean) {
+      btnResetAntrean.onclick = () => {
+        indexAntreanAktif = 0;
+        daftarSudahTerkirimSesiIni.clear();
+        renderGaleri(elBulan.value, elKat.value, filterStatus);
+      };
+    }
+
+    // Kirim Gabungan Semua Foto Sekaligus dengan Watermark Nama Jalan di Setiap Foto
     const btnKirimSemuaSekaligus = modal.querySelector('#btn-kirim-semua-foto-sekaligus');
     if (btnKirimSemuaSekaligus) {
       btnKirimSemuaSekaligus.onclick = async () => {
         if (daftarSudahDifoto.length === 0) return;
+        btnKirimSemuaSekaligus.textContent = '⏳ Menyiapkan Semua Foto & Label Lokasi...';
 
         const semuaFileGabungan = [];
         const daftarKeteranganLokasi = [];
 
-        daftarSudahDifoto.forEach((item, idxLokasi) => {
+        for (let idxLok = 0; idxLok < daftarSudahDifoto.length; idxLok++) {
+          const item = daftarSudahDifoto[idxLok];
           const namaBersih = item.sarana.lokasi.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 20);
           const fotoLokasiIni = item.koleksi.flatMap(k => k.fotoList || []);
-          fotoLokasiIni.forEach((dUrl, idxFoto) => {
-            const namaFile = `Lokasi${String(idxLokasi + 1).padStart(2, '0')}_${namaBersih}_${idxFoto + 1}.jpg`;
-            semuaFileGabungan.push(dataUrlKeFileCepat(dUrl, namaFile));
-          });
-          daftarKeteranganLokasi.push(`${idxLokasi + 1}. ${item.sarana.lokasi} (${fotoLokasiIni.length} Foto)`);
-        });
+
+          for (let idxFoto = 0; idxFoto < fotoLokasiIni.length; idxFoto++) {
+            const dUrlBerlabel = await buatFotoDenganLabelLokasi(fotoLokasiIni[idxFoto], item.sarana.lokasi, idxLok + 1);
+            const namaFile = `Lok${idxLok + 1}_${namaBersih}_${idxFoto + 1}.jpg`;
+            semuaFileGabungan.push(dataUrlKeFileCepat(dUrlBerlabel, namaFile));
+          }
+          daftarKeteranganLokasi.push(`${idxLok + 1}. ${item.sarana.lokasi} (${fotoLokasiIni.length} Foto)`);
+        }
 
         const captionGabungan = `*DOKUMENTASI SARANA PT DEVIS JAYA (${filterBulan})*\n` + daftarKeteranganLokasi.join('\n');
-
-        // Salin juga daftar lokasi ke papan klip HP sebagai cadangan
         if (navigator.clipboard) {
           navigator.clipboard.writeText(captionGabungan).catch(() => {});
         }
+
+        btnKirimSemuaSekaligus.textContent = `🚀 Gabung & Kirim SEMUA ${totalSeluruhFoto} Foto Sekaligus (Watermark Nama Jalan)`;
 
         try {
           if (navigator.canShare && navigator.canShare({ files: semuaFileGabungan })) {
@@ -343,34 +443,12 @@ export async function bukaModalGaleriWA(daftarSarana) {
               text: captionGabungan
             });
           } else {
-            alert("Jumlah foto melebihi batas sekali kirim perangkat. Mengirim secara bertahap...");
+            alert("Perangkat membatasi maksimal 10 foto sekali kirim. Gunakan tombol Antrean Berurut di atas.");
           }
-        } catch (err) {
-          console.warn("Pengiriman massal ditutup/dibatalkan:", err);
-        }
+        } catch (err) {}
       };
     }
 
-    // 3. TOMBOL BARU: KIRIM PER ALBUM LOKASI BERUNTUN (AGAR MASING-MASING JADI ALBUM TERPISAH DI WA)
-    const btnKirimBeruntun = modal.querySelector('#btn-kirim-beruntun-per-lokasi');
-    if (btnKirimBeruntun) {
-      btnKirimBeruntun.onclick = async () => {
-        for (let i = 0; i < daftarSudahDifoto.length; i++) {
-          const item = daftarSudahDifoto[i];
-          if (i > 0) {
-            const lanjut = confirm(`Lanjut kirim Album Lokasi ke-${i + 1} dari ${daftarSudahDifoto.length}?\n📍 ${item.sarana.lokasi} (${item.totalFoto} Foto)`);
-            if (!lanjut) break;
-          }
-          try {
-            await bagikanSatuTitikKeWA(item);
-          } catch (e) {
-            break;
-          }
-        }
-      };
-    }
-
-    // Hapus foto titik bulan ini
     modal.querySelectorAll('.btn-hapus-foto-titik').forEach(btn => {
       btn.onclick = async () => {
         const idS = Number(btn.dataset.id);
@@ -385,7 +463,6 @@ export async function bukaModalGaleriWA(daftarSarana) {
       };
     });
 
-    // Kirim Rekap Checklist Teks ke Atasan
     modal.querySelector('#btn-rekap-teks-wa-atasan').onclick = () => {
       const daftarSudah = daftarSudahDifoto.map((x, i) => `${i + 1}. ✅ ${x.sarana.lokasi} (${x.totalFoto} foto)`).join('\n');
       const daftarBelum = daftarStatusSarana.filter(x => !x.sudahDifoto).map((x, i) => `${i + 1}. ⏳ ${x.sarana.lokasi}`).join('\n');
