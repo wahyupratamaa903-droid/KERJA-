@@ -1,5 +1,4 @@
-// MODUL MANDIRI 3: GALERI DOKUMENTASI BULANAN & KIRIM ALBUM WHATSAPP OTOMATIS
-// Menggunakan IndexedDB agar mampu menyimpan ratusan foto HD di memori HP tanpa batas 5MB
+// MODUL MANDIRI: GALERI DOKUMENTASI BULANAN & KIRIM MASSAL WHATSAPP (1-KLIK SEMUA ALBUM)
 
 const DB_NAME = 'DevisPhotoGalleryDB';
 const STORE_NAME = 'album_foto_sarana';
@@ -48,7 +47,7 @@ async function hapusAlbumDariDb(id) {
   });
 }
 
-// Konversi File Gambar menjadi DataURL Terkompresi HD (hemat memori & cepat dikirim ke WA)
+// Kompresi gambar HD + opsional label nama lokasi di sudut bawah agar tidak tertukar saat dikirim massal
 function prosesFileKeDataUrl(file) {
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -72,11 +71,18 @@ function prosesFileKeDataUrl(file) {
   });
 }
 
-// Ubah DataURL kembali menjadi objek File saat akan di-share langsung ke aplikasi WhatsApp
-async function dataUrlKeFile(dataUrl, namaFile) {
-  const res = await fetch(dataUrl);
-  const blob = await res.blob();
-  return new File([blob], namaFile, { type: 'image/jpeg' });
+// Konversi instan sinkron (0 milidetik) agar izin klik share Chrome Android tidak kedaluwarsa saat kirim banyak foto
+function dataUrlKeFileCepat(dataUrl, namaFile) {
+  const arr = dataUrl.split(',');
+  const mimeMatch = arr[0].match(/:(.*?);/);
+  const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new File([u8arr], namaFile, { type: mime });
 }
 
 export async function bukaModalGaleriWA(daftarSarana) {
@@ -97,7 +103,6 @@ export async function bukaModalGaleriWA(daftarSarana) {
     const semuaAlbum = await ambilSemuaAlbumDariDb();
     const albumBulanIni = semuaAlbum.filter(a => a.bulan === filterBulan);
 
-    // Petakan status sudah difoto / belum untuk seluruh 22 sarana
     const daftarStatusSarana = (daftarSarana || []).map(s => {
       const koleksi = albumBulanIni.filter(a => Number(a.idSarana) === Number(s.id));
       const cocokKat = filterKategori === 'SEMUA'
@@ -112,11 +117,13 @@ export async function bukaModalGaleriWA(daftarSarana) {
       };
     });
 
-    const jmlSudah = daftarStatusSarana.filter(x => x.sudahDifoto).length;
+    const daftarSudahDifoto = daftarStatusSarana.filter(x => x.sudahDifoto);
+    const jmlSudah = daftarSudahDifoto.length;
     const jmlBelum = daftarStatusSarana.length - jmlSudah;
+    const totalSeluruhFoto = daftarSudahDifoto.reduce((sum, x) => sum + x.totalFoto, 0);
 
     let daftarTampil = daftarStatusSarana;
-    if (filterStatus === 'SUDAH') daftarTampil = daftarStatusSarana.filter(x => x.sudahDifoto);
+    if (filterStatus === 'SUDAH') daftarTampil = daftarSudahDifoto;
     else if (filterStatus === 'BELUM') daftarTampil = daftarStatusSarana.filter(x => !x.sudahDifoto);
 
     const kartuHtml = daftarTampil.map(item => {
@@ -175,7 +182,6 @@ export async function bukaModalGaleriWA(daftarSarana) {
           <button type="button" id="btn-tutup-galeri-wa" style="background:transparent; border:none; color:#94a3b8; font-size:1.3rem; cursor:pointer;">✕</button>
         </div>
 
-        <!-- FILTER BULAN & KATEGORI -->
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:8px;">
           <input type="month" id="galeri-filter-bulan" value="${filterBulan}" style="padding:6px; border-radius:6px; background:#0f172a; color:#fff; border:1px solid rgba(255,255,255,0.15); font-size:0.75rem;">
           <select id="galeri-filter-kategori" style="padding:6px; border-radius:6px; background:#0f172a; color:#fff; border:1px solid rgba(255,255,255,0.15); font-size:0.75rem;">
@@ -186,7 +192,6 @@ export async function bukaModalGaleriWA(daftarSarana) {
           </select>
         </div>
 
-        <!-- TAB STATUS PENYARING (SUDAH VS BELUM DIFOTO) -->
         <div style="display:flex; gap:6px; margin-bottom:10px;">
           <button type="button" class="tab-stat-foto" data-st="SEMUA" style="flex:1; padding:6px; border-radius:6px; font-size:0.7rem; font-weight:700; cursor:pointer; background:${filterStatus === 'SEMUA' ? '#2563eb' : '#1e293b'}; color:#fff; border:none;">
             Semua (${daftarStatusSarana.length})
@@ -201,13 +206,24 @@ export async function bukaModalGaleriWA(daftarSarana) {
 
         <input type="file" id="input-multi-foto-galeri" accept="image/*" multiple style="display:none;">
 
-        <div style="max-height:310px; overflow-y:auto; padding-right:4px; margin-bottom:10px;">
+        <div style="max-height:255px; overflow-y:auto; padding-right:4px; margin-bottom:10px;">
           ${kartuHtml}
         </div>
 
-        <button type="button" id="btn-rekap-teks-wa-atasan" style="width:100%; background:#0284c7; color:#fff; border:none; padding:9px; border-radius:8px; font-size:0.76rem; font-weight:700; cursor:pointer;">
-          📋 Kirim Rekap Checklist Dokumentasi (${jmlSudah}/${daftarStatusSarana.length} Selesai) ke WA
-        </button>
+        <!-- PANEL TOMBOL KIRIM MASSAL SEMUA ALBUM SEKALIGUS -->
+        <div style="display:flex; flex-direction:column; gap:6px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">
+          ${jmlSudah > 0 ? `
+            <button type="button" id="btn-kirim-semua-foto-sekaligus" style="width:100%; background:linear-gradient(90deg,#059669,#10b981); color:#fff; border:none; padding:10px; border-radius:8px; font-size:0.78rem; font-weight:800; cursor:pointer; box-shadow:0 4px 12px rgba(16,185,129,0.25);">
+              🚀 Kirim SEMUA Foto Sekaligus ke WA (${jmlSudah} Lokasi • ${totalSeluruhFoto} Foto)
+            </button>
+            <button type="button" id="btn-kirim-beruntun-per-lokasi" style="width:100%; background:#1e293b; color:#38bdf8; border:1px solid rgba(56,189,248,0.4); padding:8px; border-radius:8px; font-size:0.73rem; font-weight:700; cursor:pointer;">
+              ⏭️ Kirim Terpisah Per Album Lokasi Beruntun (1 s/d ${jmlSudah})
+            </button>
+          ` : ''}
+          <button type="button" id="btn-rekap-teks-wa-atasan" style="width:100%; background:#0284c7; color:#fff; border:none; padding:8px; border-radius:8px; font-size:0.73rem; font-weight:700; cursor:pointer;">
+            📋 Kirim Teks Checklist Saja (${jmlSudah}/${daftarStatusSarana.length} Selesai) ke WA
+          </button>
+        </div>
       </div>
     `;
 
@@ -222,7 +238,7 @@ export async function bukaModalGaleriWA(daftarSarana) {
       btn.onclick = () => renderGaleri(elBulan.value, elKat.value, btn.dataset.st);
     });
 
-    // Tambah banyak foto sekaligus ke satu titik sarana
+    // Upload banyak foto ke satu lokasi
     const inputFoto = modal.querySelector('#input-multi-foto-galeri');
     let idSaranaTargetUpload = null;
 
@@ -261,39 +277,98 @@ export async function bukaModalGaleriWA(daftarSarana) {
       renderGaleri(elBulan.value, elKat.value, filterStatus);
     };
 
-    // Kirim Album Foto + Keterangan Lokasi langsung ke WhatsApp (Seperti Gambar WA Anda)
+    // Fungsi bantu kirim 1 titik lokasi
+    async function bagikanSatuTitikKeWA(targetObj) {
+      const semuaFotoData = targetObj.koleksi.flatMap(k => k.fotoList || []);
+      const namaLokasiCaption = targetObj.sarana.lokasi;
+      const fileArray = semuaFotoData.map((dUrl, i) =>
+        dataUrlKeFileCepat(dUrl, `${namaLokasiCaption.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 25)}_${i + 1}.jpg`)
+      );
+
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(namaLokasiCaption).catch(() => {});
+      }
+
+      if (navigator.canShare && navigator.canShare({ files: fileArray })) {
+        await navigator.share({
+          files: fileArray,
+          text: namaLokasiCaption
+        });
+      } else {
+        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(namaLokasiCaption)}`, '_blank');
+      }
+    }
+
+    // 1. Kirim Album Satu Lokasi
     modal.querySelectorAll('.btn-share-wa-titik').forEach(btn => {
       btn.onclick = async () => {
         const idS = Number(btn.dataset.id);
         const targetObj = daftarStatusSarana.find(x => Number(x.sarana.id) === idS);
-        if (!targetObj) return;
-
-        const semuaFotoData = targetObj.koleksi.flatMap(k => k.fotoList || []);
-        const namaLokasiCaption = targetObj.sarana.lokasi;
-
-        try {
-          const fileArray = [];
-          for (let i = 0; i < semuaFotoData.length; i++) {
-            const f = await dataUrlKeFile(semuaFotoData[i], `Sarana_${i + 1}.jpg`);
-            fileArray.push(f);
-          }
-
-          if (navigator.canShare && navigator.canShare({ files: fileArray })) {
-            await navigator.share({
-              files: fileArray,
-              text: namaLokasiCaption
-            });
-          } else {
-            // Fallback salin keterangan dan buka WA
-            navigator.clipboard.writeText(namaLokasiCaption).catch(() => {});
-            alert(`Keterangan lokasi "${namaLokasiCaption}" telah disalin otomatis. Silakan tempel di WhatsApp.`);
-            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(namaLokasiCaption)}`, '_blank');
-          }
-        } catch (err) {
-          console.warn("Share dibatalkan:", err);
+        if (targetObj) {
+          try { await bagikanSatuTitikKeWA(targetObj); } catch (e) {}
         }
       };
     });
+
+    // 2. TOMBOL BARU: KIRIM SEMUA FOTO DARI SEMUA LOKASI SEKALIGUS (1 KALI PENCET)
+    const btnKirimSemuaSekaligus = modal.querySelector('#btn-kirim-semua-foto-sekaligus');
+    if (btnKirimSemuaSekaligus) {
+      btnKirimSemuaSekaligus.onclick = async () => {
+        if (daftarSudahDifoto.length === 0) return;
+
+        const semuaFileGabungan = [];
+        const daftarKeteranganLokasi = [];
+
+        daftarSudahDifoto.forEach((item, idxLokasi) => {
+          const namaBersih = item.sarana.lokasi.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 20);
+          const fotoLokasiIni = item.koleksi.flatMap(k => k.fotoList || []);
+          fotoLokasiIni.forEach((dUrl, idxFoto) => {
+            const namaFile = `Lokasi${String(idxLokasi + 1).padStart(2, '0')}_${namaBersih}_${idxFoto + 1}.jpg`;
+            semuaFileGabungan.push(dataUrlKeFileCepat(dUrl, namaFile));
+          });
+          daftarKeteranganLokasi.push(`${idxLokasi + 1}. ${item.sarana.lokasi} (${fotoLokasiIni.length} Foto)`);
+        });
+
+        const captionGabungan = `*DOKUMENTASI SARANA PT DEVIS JAYA (${filterBulan})*\n` + daftarKeteranganLokasi.join('\n');
+
+        // Salin juga daftar lokasi ke papan klip HP sebagai cadangan
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(captionGabungan).catch(() => {});
+        }
+
+        try {
+          if (navigator.canShare && navigator.canShare({ files: semuaFileGabungan })) {
+            await navigator.share({
+              files: semuaFileGabungan,
+              text: captionGabungan
+            });
+          } else {
+            alert("Jumlah foto melebihi batas sekali kirim perangkat. Mengirim secara bertahap...");
+          }
+        } catch (err) {
+          console.warn("Pengiriman massal ditutup/dibatalkan:", err);
+        }
+      };
+    }
+
+    // 3. TOMBOL BARU: KIRIM PER ALBUM LOKASI BERUNTUN (AGAR MASING-MASING JADI ALBUM TERPISAH DI WA)
+    const btnKirimBeruntun = modal.querySelector('#btn-kirim-beruntun-per-lokasi');
+    if (btnKirimBeruntun) {
+      btnKirimBeruntun.onclick = async () => {
+        for (let i = 0; i < daftarSudahDifoto.length; i++) {
+          const item = daftarSudahDifoto[i];
+          if (i > 0) {
+            const lanjut = confirm(`Lanjut kirim Album Lokasi ke-${i + 1} dari ${daftarSudahDifoto.length}?\n📍 ${item.sarana.lokasi} (${item.totalFoto} Foto)`);
+            if (!lanjut) break;
+          }
+          try {
+            await bagikanSatuTitikKeWA(item);
+          } catch (e) {
+            break;
+          }
+        }
+      };
+    }
 
     // Hapus foto titik bulan ini
     modal.querySelectorAll('.btn-hapus-foto-titik').forEach(btn => {
@@ -310,9 +385,9 @@ export async function bukaModalGaleriWA(daftarSarana) {
       };
     });
 
-    // Kirim Rekap Checklist ke Atasan
+    // Kirim Rekap Checklist Teks ke Atasan
     modal.querySelector('#btn-rekap-teks-wa-atasan').onclick = () => {
-      const daftarSudah = daftarStatusSarana.filter(x => x.sudahDifoto).map((x, i) => `${i + 1}. ✅ ${x.sarana.lokasi} (${x.totalFoto} foto)`).join('\n');
+      const daftarSudah = daftarSudahDifoto.map((x, i) => `${i + 1}. ✅ ${x.sarana.lokasi} (${x.totalFoto} foto)`).join('\n');
       const daftarBelum = daftarStatusSarana.filter(x => !x.sudahDifoto).map((x, i) => `${i + 1}. ⏳ ${x.sarana.lokasi}`).join('\n');
       const pesan = `*LAPORAN DOKUMENTASI VISUAL SARANA PT DEVIS JAYA*\nPeriode: ${filterBulan}\nStatus: ${jmlSudah} dari ${daftarStatusSarana.length} Titik Selesai\n\n*SUDAH DIFOTO:*\n${daftarSudah || '-'}\n\n*MENUNGGU GILIRAN:*\n${daftarBelum || 'Seluruh titik selesai 100%!'}`;
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(pesan)}`, '_blank');
