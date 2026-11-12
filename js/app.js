@@ -730,3 +730,100 @@ if (inputOcrFile) {
     } catch (err) { alert("OCR: " + err.message); }
   };
 }
+
+// ============================================================================
+// PENGHUBUNG MODUL BARU: ALBUM FOTO WA, MISI KUSTOM, & RADAR PLN CUACA
+// ============================================================================
+(function pasangModulTambahanTerbaru() {
+  const toolbar = document.querySelector('.toolbar-lapangan');
+
+  // 1. Tambahkan Tombol "📸 Album WA" di Toolbar
+  if (toolbar && !document.getElementById('btn-tool-album-wa')) {
+    const btnAlbum = document.createElement('button');
+    btnAlbum.type = 'button';
+    btnAlbum.id = 'btn-tool-album-wa';
+    btnAlbum.className = 'btn-tool';
+    btnAlbum.style.borderColor = 'rgba(16,185,129,0.5)';
+    btnAlbum.innerHTML = '<span>📸</span><span>Album WA</span>';
+    btnAlbum.onclick = async () => {
+      const mod = await import('./plugins/photo-gallery.js');
+      mod.bukaModalGaleriWA(dataSarana);
+    };
+    toolbar.appendChild(btnAlbum);
+  }
+
+  // 2. Tambahkan Tombol "⚡ Info PLN" di Toolbar & Buat Pill Cuaca Bisa Diklik
+  if (toolbar && !document.getElementById('btn-tool-radar-pln')) {
+    const btnRadar = document.createElement('button');
+    btnRadar.type = 'button';
+    btnRadar.id = 'btn-tool-radar-pln';
+    btnRadar.className = 'btn-tool';
+    btnRadar.style.borderColor = 'rgba(245,158,11,0.5)';
+    btnRadar.innerHTML = '<span>⚡</span><span>Cuaca & PLN</span>';
+    btnRadar.onclick = async () => {
+      const mod = await import('./plugins/pln-weather-radar.js');
+      mod.bukaModalRadarPlnCuaca(dataSarana);
+    };
+    toolbar.appendChild(btnRadar);
+  }
+
+  const pillCuaca = document.getElementById('pill-cuaca-bengkulu');
+  if (pillCuaca) {
+    pillCuaca.style.cursor = 'pointer';
+    pillCuaca.onclick = async () => {
+      const mod = await import('./plugins/pln-weather-radar.js');
+      mod.bukaModalRadarPlnCuaca(dataSarana);
+    };
+  }
+
+  // 3. Upgrade Tampilan Misi Kerja agar Mendukung Tambah/Selesai/Hapus Misi Sendiri
+  async function perbaruiTampilanMisiLengkap() {
+    const modMisi = await import('./mission.js');
+    modMisi.pasangPanelMisiKustom(perbaruiTampilanMisiLengkap);
+
+    const containerMisi = document.getElementById('container-list-misi');
+    if (!containerMisi) return;
+
+    const daftar = modMisi.dapatkanMisiHariIni();
+    containerMisi.innerHTML = daftar.map(m => `
+      <div style="background:rgba(15,23,42,0.75); padding:10px 12px; border-radius:8px; border-left:4px solid ${m.sudahSelesai ? '#10b981' : '#ef4444'}; margin-bottom:8px; opacity:${m.sudahSelesai ? '0.75' : '1'};">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div>
+            <span style="font-size:0.68rem; color:${m.sudahSelesai ? '#10b981' : '#ef4444'}; font-weight:800; text-transform:uppercase;">${m.kategori}</span>
+            <h4 style="color:#fff; font-size:0.88rem; margin:2px 0; ${m.sudahSelesai ? 'text-decoration:line-through;' : ''}">${m.judul}</h4>
+          </div>
+          ${m.isCustom ? `
+            <div style="display:flex; gap:4px;">
+              <button type="button" class="btn-selesai-misi-kustom" data-id="${m.id}" style="background:#059669; color:#fff; border:none; padding:4px 7px; border-radius:4px; font-size:0.68rem; cursor:pointer;">✓</button>
+              <button type="button" class="btn-hapus-misi-kustom" data-id="${m.id}" style="background:#dc2626; color:#fff; border:none; padding:4px 7px; border-radius:4px; font-size:0.68rem; cursor:pointer;">🗑️</button>
+            </div>
+          ` : ''}
+        </div>
+        <p style="font-size:0.72rem; color:#cbd5e1; margin:4px 0 0 0; line-height:1.4; white-space:pre-line;">${m.detail}</p>
+        <div style="margin-top:6px; font-size:0.68rem; color:#38bdf8;">🎯 Target: ${m.target}</div>
+      </div>
+    `).join('');
+
+    containerMisi.querySelectorAll('.btn-selesai-misi-kustom').forEach(btn => {
+      btn.onclick = () => {
+        modMisi.toggleSelesaiMisiKustom(btn.dataset.id);
+        perbaruiTampilanMisiLengkap();
+      };
+    });
+
+    containerMisi.querySelectorAll('.btn-hapus-misi-kustom').forEach(btn => {
+      btn.onclick = () => {
+        if (confirm("Hapus jadwal misi buatan Anda ini?")) {
+          modMisi.hapusMisiKustom(btn.dataset.id);
+          perbaruiTampilanMisiLengkap();
+        }
+      };
+    });
+  }
+
+  const tabMisiBtn = document.getElementById('nav-tab-misi');
+  if (tabMisiBtn) {
+    tabMisiBtn.addEventListener('click', perbaruiTampilanMisiLengkap);
+  }
+  perbaruiTampilanMisiLengkap();
+})();
