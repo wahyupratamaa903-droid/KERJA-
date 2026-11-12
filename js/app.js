@@ -620,3 +620,113 @@ document.getElementById('form-catat-bbm').onsubmit = (e) => {
 sesuaikanTampilanAkses();
 muatDataUtama();
 muatCuacaMandiri();
+
+// ============================================================================
+// PENGHUBUNG MODUL PLUG-AND-PLAY TAMBAHAN (TERPISAH & ANTI-CRASH)
+// ============================================================================
+
+// A. MODUL SUARA JARVIS (TOMBOL BRIEF AI & TOMBOL MIKROFON MELAYANG)
+const btnBriefAi = document.getElementById('btn-tool-jarvis-brief');
+if (btnBriefAi) {
+  btnBriefAi.onclick = async () => {
+    try {
+      const jarvis = await import('./plugins/devis-jarvis.js');
+      if (isPetugas) jarvis.bacakanMorningBrief(dataSarana, getStatusBBM(), hitungPrediksiHabis);
+      else jarvis.bacakanBriefTamu();
+    } catch (e) { alert("Brief AI: " + e.message); }
+  };
+}
+
+const fabVoice = document.getElementById('fab-voice-cmd');
+if (fabVoice) {
+  let sedangMerekam = false;
+  fabVoice.onclick = async () => {
+    const hud = document.getElementById('hud-voice');
+    const teksHud = document.getElementById('teks-hud-voice');
+    try {
+      const jarvis = await import('./plugins/devis-jarvis.js');
+      if (!sedangMerekam) {
+        await jarvis.mulaiRekamSuara();
+        sedangMerekam = true;
+        fabVoice.classList.add('recording');
+        fabVoice.textContent = '⏹️';
+        if (hud) { hud.style.display = 'flex'; teksHud.textContent = 'Mendengarkan... Sebut Lokasi & Sisa kWh'; }
+      } else {
+        sedangMerekam = false;
+        fabVoice.classList.remove('recording');
+        fabVoice.textContent = '🎙️';
+        if (teksHud) teksHud.textContent = 'Llama 3.3 sedang mengekstrak data...';
+
+        const ucapan = await jarvis.hentikanDanProsesSuara();
+        const hasil = await jarvis.ekstrakDataTokenDenganAI(ucapan, dataSarana);
+        if (hud) hud.style.display = 'none';
+
+        if (hasil && hasil.idSarana) {
+          const idx = dataSarana.findIndex(s => s.id === Number(hasil.idSarana));
+          if (idx !== -1) {
+            indexSaranaTerpilih = idx;
+            document.getElementById('nama-sarana-modal').textContent = dataSarana[idx].lokasi;
+            document.getElementById('modalTanggal').value = new Date().toISOString().split('T')[0];
+            document.getElementById('modalKwh').value = hasil.kwh || '';
+            document.getElementById('modal-update').style.display = 'flex';
+          }
+        } else {
+          alert(`Suara Terdengar: "${ucapan}"\nStatus: ${hasil.error || 'Lokasi tidak dikenali'}`);
+        }
+      }
+    } catch (err) {
+      sedangMerekam = false;
+      fabVoice.classList.remove('recording');
+      fabVoice.textContent = '🎙️';
+      if (hud) hud.style.display = 'none';
+      alert("Suara AI: " + err.message);
+    }
+  };
+}
+
+// B. MODUL CADANGAN LANGSUNG KE GITHUB (TANPA TERMUX)
+const btnVaultGithub = document.getElementById('btn-vault-github');
+if (btnVaultGithub) {
+  btnVaultGithub.onclick = async () => {
+    try {
+      const modGh = await import('./plugins/github-vault.js');
+      const fnBackup = modGh.backupKeGitHub || modGh.jalankanBackupGitHub || modGh.default;
+      if (fnBackup) await fnBackup(dataSarana);
+    } catch (e) { alert("GitHub Backup: " + e.message); }
+  };
+}
+
+// C. MODUL ALARM KALENDER (.ICS)
+const btnKalender = document.getElementById('btn-tool-kalender');
+if (btnKalender) {
+  btnKalender.onclick = async () => {
+    try {
+      const modCal = await import('./calendar-sync.js');
+      const fnCal = modCal.buatPengingatKalender || modCal.unduhJadwalKalender || modCal.eksporKeKalender;
+      if (fnCal) fnCal(dataSarana, hitungPrediksiHabis);
+    } catch (e) { alert("Alarm Cek: " + e.message); }
+  };
+}
+
+// D. MODUL KAMERA OCR METERAN
+const inputOcrFile = document.getElementById('input-file-ocr');
+let targetInputOcr = null;
+if (inputOcrFile) {
+  const btnScanForm = document.getElementById('btn-scan-form');
+  const btnScanModal = document.getElementById('btn-scan-modal');
+  if (btnScanForm) btnScanForm.onclick = () => { targetInputOcr = document.getElementById('sisaKwh'); inputOcrFile.click(); };
+  if (btnScanModal) btnScanModal.onclick = () => { targetInputOcr = document.getElementById('modalKwh'); inputOcrFile.click(); };
+
+  inputOcrFile.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !targetInputOcr) return;
+    try {
+      const modOcr = await import('./ocr.js');
+      const fnOcr = modOcr.prosesOcrMeteran || modOcr.bacaAngkaMeteran;
+      if (fnOcr) {
+        const angka = await fnOcr(file);
+        if (angka !== null && angka !== undefined) targetInputOcr.value = angka;
+      }
+    } catch (err) { alert("OCR: " + err.message); }
+  };
+}
